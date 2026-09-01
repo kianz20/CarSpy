@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "dealers_url_idx" ON "dealers" USING btree ("url");

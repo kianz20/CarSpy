@@ -1,0 +1,50 @@
+# Render Blueprint — see https://render.com/docs/blueprint-spec
+#
+# Defines the two pieces this app needs (PLAN.md §7's open hosting item):
+#   1. carvalue        — the Next.js web app itself
+#   2. carvalue-crawler — the dealer crawler, run once daily (PLAN.md §5a's
+#      24h cadence assumption — the "2 missed crawls before delisted" logic
+#      is built around that interval, so keep this at once/day)
+#
+# Both need DATABASE_URL (the Neon connection string) — set as a secret in
+# the Render dashboard after importing this Blueprint, not committed here.
+# Use the pooled connection string; drizzle.config.ts falls back to
+# DATABASE_URL when DATABASE_URL_UNPOOLED isn't set, so one var covers both
+# the app and migrations.
+#
+# To deploy: push this file to the repo, then in the Render dashboard choose
+# "New > Blueprint" and point it at this repo. Render reads this file and
+# creates both services in one go.
+
+services:
+  - type: web
+    name: carvalue
+    runtime: node
+    plan: free
+    region: singapore # closest Render region to NZ — reduces latency to dealer sites and to users
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+    # Free-tier web services spin down after ~15 min idle and cold-start on
+    # the next request (10-50s). Fine for a friends-and-family-scale project;
+    # upgrade to a paid instance type ($7/mo+) if that latency becomes annoying.
+
+  - type: cron
+    name: carvalue-crawler
+    runtime: node
+    region: singapore
+    # 14:00 UTC = 2am NZST / 3am NZDT — adjust to taste. Render cron jobs are
+    # billed per second while running (~$1/month minimum), not covered by
+    # the web service's free tier — see PLAN.md §7.
+    schedule: "0 14 * * *"
+    buildCommand: npm ci
+    startCommand: npm run crawl
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
