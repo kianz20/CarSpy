@@ -45,7 +45,6 @@ export function OwnershipBreakdown({
   year,
   mileageKm,
   deposit,
-  budget,
   financeEnabled = true,
   annualKm,
 }: {
@@ -56,12 +55,10 @@ export function OwnershipBreakdown({
   make: string;
   year: number | null;
   mileageKm?: number | null;
+  /** Only meaningful (and only ever set by the caller) when financeEnabled —
+   * with finance off there's no deposit to preserve, so undefined is correct
+   * there too, including for the insurance toggle's own URL reconstruction. */
   deposit?: number;
-  /** Raw budget value, regardless of financeEnabled — unlike `deposit` (which
-   * the caller already blanks out when finance is off), this is what the
-   * insurance toggle below needs to preserve budget/financeEnabled in the
-   * URL when it navigates. */
-  budget?: number;
   financeEnabled?: boolean;
   annualKm?: number;
 }) {
@@ -219,7 +216,7 @@ export function OwnershipBreakdown({
         <InsuranceCoverToggle
           coverType={breakdown.insuranceCoverType}
           searchParams={{
-            ...(budget !== undefined ? { budget: String(budget) } : {}),
+            ...(deposit !== undefined ? { deposit: String(deposit) } : {}),
             ...(!financeEnabled ? { financeEnabled: "false" } : {}),
             ...(annualKm !== undefined ? { annualKm: String(annualKm) } : {}),
           }}

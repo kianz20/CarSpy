@@ -7,6 +7,24 @@ import { useFormStatus } from "react-dom";
 
 type Option = { value: string; label: string };
 
+// The "actual" search filters — everything Clear filters resets/drops from
+// the URL. Deliberately excludes annualKm, insuranceCoverType,
+// financeEnabled and deposit: those configure the ownership-cost estimate,
+// not what listings match, so clearing filters shouldn't touch them.
+const FILTER_FIELD_NAMES = [
+  "bodyType",
+  "powertrain",
+  "make",
+  "model",
+  "transmission",
+  "region",
+  "minYear",
+  "maxYear",
+  "minPrice",
+  "maxPrice",
+  "maxMileageKm",
+] as const;
+
 export function SearchForm({
   bodyTypes,
   powertrains,
@@ -40,55 +58,95 @@ export function SearchForm({
   // not only after they submit and the URL actually changes. Resynced from
   // `current` whenever formKey changes, right during render (React's
   // recommended way to reset state on a prop change) rather than in an
-  // effect, which would cause an extra post-commit render.
+  // effect, which would cause an extra post-commit render. Only counts the
+  // actual filter fields (see FILTER_FIELD_NAMES) — Clear filters doesn't
+  // touch annualKm/insuranceCoverType/financeEnabled/deposit, so there's no
+  // point showing it just because one of those alone is set.
+  const hasAnyFilter = (source: Record<string, string>) =>
+    FILTER_FIELD_NAMES.some((name) => source[name]);
   const [prevFormKey, setPrevFormKey] = useState(formKey);
-  const [hasFilters, setHasFilters] = useState(Object.keys(current).length > 0);
+  const [hasFilters, setHasFilters] = useState(hasAnyFilter(current));
   if (formKey !== prevFormKey) {
     setPrevFormKey(formKey);
-    setHasFilters(Object.keys(current).length > 0);
+    setHasFilters(hasAnyFilter(current));
   }
 
-  // Budget is required, but the browser's own validation bubble is easy to
-  // miss/dismiss — show our own persistent message instead. onInvalid fires
-  // (and still blocks submission) even with the bubble suppressed via
-  // preventDefault, so nothing is lost by replacing it.
-  const [budgetError, setBudgetError] = useState(false);
+  // Deposit is required (but only while finance is enabled — see below), and
+  // the browser's own validation bubble is easy to miss/dismiss, so show our
+  // own persistent message instead. onInvalid fires (and still blocks
+  // submission) even with the bubble suppressed via preventDefault, so
+  // nothing is lost by replacing it.
+  const [depositError, setDepositError] = useState(false);
+
+  // Drives whether the Deposit field renders at all: with finance off there's
+  // no loan, so nothing to put a deposit toward. Resynced from `current`
+  // alongside hasFilters above (same render-time-reset rationale).
+  const [financeEnabled, setFinanceEnabled] = useState(
+    current.financeEnabled !== "false",
+  );
+  if (formKey !== prevFormKey) {
+    setFinanceEnabled(current.financeEnabled !== "false");
+  }
 
   function handleFormChange(event: FormEvent<HTMLFormElement>) {
     const formData = new FormData(event.currentTarget);
-    // Excludes financeEnabled: its hidden fallback input (see below) always
-    // contributes a non-empty value, which would otherwise make hasFilters
-    // permanently true the moment any field change fires, regardless of
-    // whether the user actually set anything.
-    setHasFilters([...formData.entries()].some(([name, value]) => name !== "financeEnabled" && String(value).trim() !== ""));
-    if (String(formData.get("budget") ?? "").trim() !== "") {
-      setBudgetError(false);
+    // Only the actual filter fields count — see FILTER_FIELD_NAMES.
+    setHasFilters(
+      FILTER_FIELD_NAMES.some(
+        (name) => String(formData.get(name) ?? "").trim() !== "",
+      ),
+    );
+    if (String(formData.get("deposit") ?? "").trim() !== "") {
+      setDepositError(false);
     }
+    // `.get()` returns the first same-named value in DOM order — the
+    // checkbox (before its hidden fallback) when checked, so "true"/"false"
+    // matches the checkbox's actual state.
+    setFinanceEnabled(formData.get("financeEnabled") !== "false");
   }
 
-  function handleBudgetInvalid(event: FormEvent<HTMLInputElement>) {
+  function handleDepositInvalid(event: FormEvent<HTMLInputElement>) {
     event.preventDefault();
-    setBudgetError(true);
+    setDepositError(true);
   }
+
+  // Drops only the actual filter keys from the URL, preserving
+  // annualKm/insuranceCoverType/financeEnabled/deposit exactly as they are.
+  const clearParams = new URLSearchParams(current);
+  for (const name of FILTER_FIELD_NAMES) clearParams.delete(name);
+  const clearHref = clearParams.size > 0 ? `/?${clearParams.toString()}` : "/";
 
   // If the fields were only edited but never submitted, the URL never
-  // changes when this navigates to "/" — so the formKey-remount reset above
-  // won't fire. Reset the (uncontrolled) fields directly so stale picks
-  // don't linger even when Next's router cache re-renders identical output.
+  // changes when this navigates to clearHref — so the formKey-remount reset
+  // above won't fire. Reset the (uncontrolled) filter fields directly so
+  // stale picks don't linger even when Next's router cache re-renders
+  // identical output. Deliberately field-by-field (not form.reset()): a
+  // blanket reset would also revert annualKm/insuranceCoverType/
+  // financeEnabled/deposit, which Clear filters must leave untouched.
   function handleClear(event: MouseEvent<HTMLAnchorElement>) {
-    event.currentTarget.closest("form")?.reset();
+    const form = event.currentTarget.closest("form");
+    for (const name of FILTER_FIELD_NAMES) {
+      const field = form?.elements.namedItem(name);
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement
+      ) {
+        field.value = "";
+      }
+    }
     setHasFilters(false);
   }
 
   return (
     <div key={formKey}>
-      <Form
-        action=""
-        onChange={handleFormChange}
-        className="grid grid-cols-2 gap-4 rounded-lg border border-black/10 p-4 dark:border-white/15 sm:grid-cols-3 lg:grid-cols-6"
-      >
-        <Field label="Body type">
-          <select name="bodyType" defaultValue={current.bodyType ?? ""} className={selectClass}>
+      <Form action="" onChange={handleFormChange} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4 rounded-lg border border-black/10 p-4 dark:border-white/15 sm:grid-cols-3 lg:grid-cols-6">
+        <Field label="Vehicle type">
+          <select
+            name="bodyType"
+            defaultValue={current.bodyType ?? ""}
+            className={selectClass}
+          >
             <option value="">Any</option>
             {bodyTypes.map((o) => (
               <option key={o.value} value={o.value}>
@@ -98,8 +156,12 @@ export function SearchForm({
           </select>
         </Field>
 
-        <Field label="Powertrain">
-          <select name="powertrain" defaultValue={current.powertrain ?? ""} className={selectClass}>
+        <Field label="Fuel type">
+          <select
+            name="powertrain"
+            defaultValue={current.powertrain ?? ""}
+            className={selectClass}
+          >
             <option value="">Any</option>
             {powertrains.map((o) => (
               <option key={o.value} value={o.value}>
@@ -110,7 +172,11 @@ export function SearchForm({
         </Field>
 
         <Field label="Make">
-          <select name="make" defaultValue={current.make ?? ""} className={selectClass}>
+          <select
+            name="make"
+            defaultValue={current.make ?? ""}
+            className={selectClass}
+          >
             <option value="">Any</option>
             {makes.map((m) => (
               <option key={m} value={m}>
@@ -121,11 +187,21 @@ export function SearchForm({
         </Field>
 
         <Field label="Model">
-          <input type="text" name="model" defaultValue={current.model ?? ""} placeholder="e.g. RAV4" className={inputClass} />
+          <input
+            type="text"
+            name="model"
+            defaultValue={current.model ?? ""}
+            placeholder="e.g. RAV4"
+            className={inputClass}
+          />
         </Field>
 
         <Field label="Transmission">
-          <select name="transmission" defaultValue={current.transmission ?? ""} className={selectClass}>
+          <select
+            name="transmission"
+            defaultValue={current.transmission ?? ""}
+            className={selectClass}
+          >
             <option value="">Any</option>
             <option value="automatic">Automatic</option>
             <option value="manual">Manual</option>
@@ -133,7 +209,11 @@ export function SearchForm({
         </Field>
 
         <Field label="Region">
-          <select name="region" defaultValue={current.region ?? ""} className={selectClass}>
+          <select
+            name="region"
+            defaultValue={current.region ?? ""}
+            className={selectClass}
+          >
             <option value="">Any</option>
             {regions.map((r) => (
               <option key={r} value={r}>
@@ -144,44 +224,121 @@ export function SearchForm({
         </Field>
 
         <Field label="Min year">
-          <input type="number" name="minYear" defaultValue={current.minYear ?? ""} min={1980} max={2100} step={1} className={inputClass} />
-        </Field>
-
-        <Field label="Max year">
-          <input type="number" name="maxYear" defaultValue={current.maxYear ?? ""} min={1980} max={2100} step={1} className={inputClass} />
-        </Field>
-
-        <Field label="Min price ($)">
-          <input type="number" name="minPrice" defaultValue={current.minPrice ?? ""} min={0} step={500} className={inputClass} />
-        </Field>
-
-        <Field label="Max price ($)">
-          <input type="number" name="maxPrice" defaultValue={current.maxPrice ?? ""} min={0} step={500} className={inputClass} />
-        </Field>
-
-        <Field label="Max mileage (km)">
-          <input type="number" name="maxMileageKm" defaultValue={current.maxMileageKm ?? ""} min={0} step={5000} className={inputClass} />
-        </Field>
-
-        <Field
-          label="Budget ($)"
-          hint="Required — the most you can spend, used for search + cost estimate"
-          error={budgetError ? "Please enter a budget before searching" : undefined}
-        >
           <input
             type="number"
-            name="budget"
-            defaultValue={current.budget ?? ""}
-            min={0}
-            step={500}
-            required
-            onInvalid={handleBudgetInvalid}
-            className={`${inputClass} ${budgetError ? "border-red-500 focus:border-red-500 dark:border-red-500" : ""}`}
+            name="minYear"
+            defaultValue={current.minYear ?? ""}
+            min={1980}
+            max={2100}
+            step={1}
+            className={inputClass}
           />
         </Field>
 
-        <Field label="Finance" hint="Unchecked: only shows listings priced at or under your budget">
-          <div className="flex h-[30px] items-center gap-2">
+        <Field label="Max year">
+          <input
+            type="number"
+            name="maxYear"
+            defaultValue={current.maxYear ?? ""}
+            min={1980}
+            max={2100}
+            step={1}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field label="Min price ($)">
+          <input
+            type="number"
+            name="minPrice"
+            defaultValue={current.minPrice ?? ""}
+            min={0}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field label="Max price ($)">
+          <input
+            type="number"
+            name="maxPrice"
+            defaultValue={current.maxPrice ?? ""}
+            min={0}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field label="Max mileage (km)">
+          <input
+            type="number"
+            name="maxMileageKm"
+            defaultValue={current.maxMileageKm ?? ""}
+            min={0}
+            step={5000}
+            className={inputClass}
+          />
+        </Field>
+
+        <div className="flex flex-col justify-end">
+          {hasFilters ? (
+            <Link
+              href={clearHref}
+              onClick={handleClear}
+              className="flex items-center justify-center rounded-md border border-black/15 px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+            >
+              Clear filters
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex cursor-not-allowed items-center justify-center rounded-md border border-black/10 px-4 py-1.5 text-sm font-medium text-zinc-400 dark:border-white/10 dark:text-zinc-600"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        <hr className="col-span-full border-black/10 dark:border-white/15" />
+
+        <Field
+          label="Insurance cover"
+          hint="Used for the ownership cost estimate"
+          className="col-span-2"
+        >
+          <select
+            name="insuranceCoverType"
+            defaultValue={current.insuranceCoverType ?? ""}
+            className={selectClass}
+          >
+            <option value="">Comprehensive (default)</option>
+            <option value="third_party_fire_theft">
+              Third party, fire & theft
+            </option>
+            <option value="none">None (uninsured)</option>
+          </select>
+        </Field>
+
+        <hr className="col-span-full border-black/10 dark:border-white/15" />
+
+        <Field
+          label="How many km do you drive per year?"
+          hint="Defaults to 12,000km/yr"
+          className="col-span-2"
+        >
+          <input
+            type="number"
+            name="annualKm"
+            defaultValue={current.annualKm ?? ""}
+            min={0}
+            step={1000}
+            className={inputClass}
+          />
+        </Field>
+
+        <hr className="col-span-full border-black/10 dark:border-white/15" />
+
+        <Field label="Finance" className="col-span-2">
+          <div className="flex min-h-[30px] items-center gap-2">
             <input
               type="checkbox"
               name="financeEnabled"
@@ -189,7 +346,9 @@ export function SearchForm({
               defaultChecked={current.financeEnabled !== "false"}
               className="h-4 w-4 rounded border-black/20 dark:border-white/20"
             />
-            <span className="text-sm font-normal text-zinc-700 dark:text-zinc-300">Finance enabled</span>
+            <span className="text-sm font-normal text-zinc-700 dark:text-zinc-300">
+              Are you financing this car?
+            </span>
           </div>
           {/* Same-name hidden fallback, placed after the checkbox: an
               unchecked checkbox submits nothing at all, so without this the
@@ -200,30 +359,31 @@ export function SearchForm({
           <input type="hidden" name="financeEnabled" value="false" />
         </Field>
 
-        <Field label="Annual driving (km)" hint="Defaults to 12,000km/yr">
-          <input type="number" name="annualKm" defaultValue={current.annualKm ?? ""} min={0} step={1000} className={inputClass} />
-        </Field>
-
-        <Field label="Insurance cover" hint="Used for the ownership cost estimate" className="col-span-2">
-          <select name="insuranceCoverType" defaultValue={current.insuranceCoverType ?? ""} className={selectClass}>
-            <option value="">Comprehensive (default)</option>
-            <option value="third_party_fire_theft">Third party, fire & theft</option>
-            <option value="none">None (uninsured)</option>
-          </select>
-        </Field>
-
-        <div className="flex items-end gap-2">
-          <SearchButton />
-          {hasFilters && (
-            <Link
-              href="/"
-              onClick={handleClear}
-              className="flex w-full items-center justify-center rounded-md border border-black/15 px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-            >
-              Clear filters
-            </Link>
-          )}
+        {financeEnabled && (
+          <Field
+            label="Deposit ($)"
+            hint="Required — used for the 3-year ownership cost estimate"
+            error={
+              depositError
+                ? "Please enter a deposit before searching"
+                : undefined
+            }
+          >
+            <input
+              type="number"
+              name="deposit"
+              defaultValue={current.deposit ?? ""}
+              min={0}
+              step={500}
+              required
+              onInvalid={handleDepositInvalid}
+              className={`${inputClass} ${depositError ? "border-red-500 focus:border-red-500 dark:border-red-500" : ""}`}
+            />
+          </Field>
+        )}
         </div>
+
+        <SearchButton />
       </Form>
     </div>
   );
@@ -247,13 +407,21 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 ${className ?? ""}`}>
+    <label
+      className={`flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 ${className ?? ""}`}
+    >
       <span>{label}</span>
       {children}
       {error ? (
-        <span className="text-[10px] font-normal text-red-600 dark:text-red-400">{error}</span>
+        <span className="text-[10px] font-normal text-red-600 dark:text-red-400">
+          {error}
+        </span>
       ) : (
-        hint && <span className="text-[10px] font-normal text-zinc-400 dark:text-zinc-500">{hint}</span>
+        hint && (
+          <span className="text-[10px] font-normal text-zinc-400 dark:text-zinc-500">
+            {hint}
+          </span>
+        )
       )}
     </label>
   );
@@ -279,9 +447,25 @@ function SearchButton() {
 
 function Spinner() {
   return (
-    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    <svg
+      className="h-4 w-4 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   );
 }

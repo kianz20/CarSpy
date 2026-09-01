@@ -48,7 +48,7 @@ export default async function Home({
     "minPrice",
     "maxPrice",
     "maxMileageKm",
-    "budget",
+    "deposit",
     "financeEnabled",
     "annualKm",
     "insuranceCoverType",
@@ -57,7 +57,7 @@ export default async function Home({
     if (value) current[key] = value;
   }
 
-  const budget = toNumber(current.budget);
+  const deposit = toNumber(current.deposit);
   const annualKm = toNumber(current.annualKm);
   const insuranceCoverType: InsuranceCoverType | undefined =
     current.insuranceCoverType === "third_party_fire_theft" ||
@@ -67,23 +67,12 @@ export default async function Home({
   // Checkbox absence can't distinguish "never touched" from "explicitly
   // unchecked" on its own — the search form pairs it with a hidden fallback
   // input so an explicit uncheck always round-trips as the literal "false".
+  // Its presence is also what distinguishes "the user actually submitted a
+  // search" from a bare first visit to "/" — deposit alone can't do that
+  // anymore since the search form only requires/renders it when finance is
+  // enabled, so skip the (real, DB-hitting) search entirely until then.
   const financeEnabled = current.financeEnabled !== "false";
-
-  // Budget is a required field on the search form, so its presence in the
-  // URL is what distinguishes "the user actually submitted a search" from a
-  // bare first visit to "/" — skip the (real, DB-hitting) search entirely
-  // until then, rather than showing the whole unfiltered inventory by default.
-  const hasSearched = current.budget !== undefined;
-
-  // With finance off, the user is paying cash — budget is a hard price
-  // ceiling on top of (not instead of) any explicit max price they set.
-  // With finance on, budget instead feeds the ownership-cost model as a
-  // deposit (below), and doesn't constrain which listings can appear at all.
-  const explicitMaxPrice = toNumber(current.maxPrice);
-  const maxPrice =
-    !financeEnabled && budget !== undefined
-      ? Math.min(explicitMaxPrice ?? Infinity, budget)
-      : explicitMaxPrice;
+  const hasSearched = current.financeEnabled !== undefined;
 
   const filters: ListingSearchFilters = {
     bodyType: current.bodyType,
@@ -93,19 +82,17 @@ export default async function Home({
     transmission: current.transmission,
     region: current.region,
     minPrice: toNumber(current.minPrice),
-    maxPrice,
+    maxPrice: toNumber(current.maxPrice),
     maxMileageKm: toNumber(current.maxMileageKm),
     minYear: toNumber(current.minYear),
     maxYear: toNumber(current.maxYear),
   };
 
-  // Cash purchase (finance off) means every shown listing is bought outright
-  // — depositFraction: 1 forces loanAmount (and so financeInterest) to $0 for
-  // all of them, regardless of the listing's own price, which is simpler
-  // than computing a per-listing absolute deposit equal to its price.
-  const financeOptions = financeEnabled
-    ? { deposit: budget }
-    : { depositFraction: 1 };
+  // Finance off means no loan is modeled at all — depositFraction: 1 forces
+  // loanAmount (and so financeInterest) to $0 for every listing, and no
+  // price-based filtering is applied beyond the existing min/max price
+  // fields (deposit isn't a spending cap here, just a finance input).
+  const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
   const [bodyTypes, powertrains, makes, regions] = await Promise.all([
     getCategoryOptions("body_type"),
@@ -167,8 +154,7 @@ export default async function Home({
 
       {!hasSearched ? (
         <p className="py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          Set your filters and budget above, then hit Search to see matching
-          listings.
+          Set your filters above, then hit Search to see matching listings.
         </p>
       ) : (
         <>
@@ -190,7 +176,8 @@ export default async function Home({
             ) : (
               listingsData.map((listing) => {
                 const detailParams = new URLSearchParams();
-                if (current.budget) detailParams.set("budget", current.budget);
+                if (current.deposit)
+                  detailParams.set("deposit", current.deposit);
                 if (current.financeEnabled)
                   detailParams.set("financeEnabled", current.financeEnabled);
                 if (current.annualKm)

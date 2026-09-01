@@ -35,11 +35,11 @@ export default async function ListingDetailPage({
   const { listings: listing, dealers: dealer } = row;
   const price = parseFloat(listing.price);
 
-  // Carries the same budget/financeEnabled/annualKm the user set on the
+  // Carries the same deposit/financeEnabled/annualKm the user set on the
   // search page so the breakdown here matches what they saw on the results
   // list, rather than silently reverting to defaults.
   const query = await searchParams;
-  const budget = toNumber(first(query.budget));
+  const deposit = toNumber(first(query.deposit));
   const annualKm = toNumber(first(query.annualKm));
   const queryInsuranceCoverType = first(query.insuranceCoverType);
   const insuranceCoverType: InsuranceCoverType | undefined =
@@ -49,11 +49,10 @@ export default async function ListingDetailPage({
   // behavior; explicit "false" is the only way to turn it off.
   const financeEnabled = first(query.financeEnabled) !== "false";
 
-  // Cash purchase (finance off) means this listing was bought outright —
-  // depositFraction: 1 forces loanAmount (and so financeInterest) to $0,
-  // consistent with how the search results list computes the same listing's
-  // cost.
-  const financeOptions = financeEnabled ? { deposit: budget } : { depositFraction: 1 };
+  // Finance off means no loan is modeled at all — depositFraction: 1 forces
+  // loanAmount (and so financeInterest) to $0, consistent with how the
+  // search results list computes the same listing's cost.
+  const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
   const ownershipCost = estimate3YearOwnershipCost(
     {
@@ -67,12 +66,12 @@ export default async function ListingDetailPage({
     { ...financeOptions, annualKm, insuranceCoverType },
   );
 
-  // Only round-trips budget/financeEnabled/annualKm/insuranceCoverType (the
+  // Only round-trips deposit/financeEnabled/annualKm/insuranceCoverType (the
   // only params this page receives) — the browser's own back button is what
   // actually restores the full set of search filters, since this is a plain
   // link, not a reconstruction of them.
   const backParams = new URLSearchParams();
-  if (budget !== undefined) backParams.set("budget", String(budget));
+  if (deposit !== undefined) backParams.set("deposit", String(deposit));
   if (!financeEnabled) backParams.set("financeEnabled", "false");
   if (annualKm !== undefined) backParams.set("annualKm", String(annualKm));
   if (insuranceCoverType) backParams.set("insuranceCoverType", insuranceCoverType);
@@ -109,8 +108,8 @@ export default async function ListingDetailPage({
       <div className="grid grid-cols-2 gap-3 rounded-lg border border-black/10 p-4 text-sm dark:border-white/15 sm:grid-cols-3">
         <Detail label="Mileage" value={listing.mileageKm !== null ? `${formatNumber(listing.mileageKm)} km` : undefined} />
         <Detail label="Transmission" value={listing.transmission ?? undefined} capitalize />
-        <Detail label="Powertrain" value={listing.powertrain ?? undefined} capitalize />
-        <Detail label="Body type" value={listing.bodyType?.replace("_", " ")} capitalize />
+        <Detail label="Fuel type" value={listing.powertrain ?? undefined} capitalize />
+        <Detail label="Vehicle type" value={listing.bodyType?.replace("_", " ")} capitalize />
         <Detail label="Engine" value={listing.engine ? formatEngine(listing.engine) : undefined} />
         <Detail label="Import status" value={listing.importStatus === "nz_new" ? "NZ new" : listing.importStatus === "import" ? "Import" : undefined} />
         <Detail label="VIN" value={listing.vin ?? undefined} />
@@ -128,8 +127,7 @@ export default async function ListingDetailPage({
           make={listing.make}
           year={listing.year}
           mileageKm={listing.mileageKm}
-          deposit={financeEnabled ? budget : undefined}
-          budget={budget}
+          deposit={financeEnabled ? deposit : undefined}
           financeEnabled={financeEnabled}
           annualKm={annualKm}
         />

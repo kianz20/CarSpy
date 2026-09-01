@@ -1,7 +1,8 @@
-import { and, asc, count, eq, gte, ilike, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings, dealers } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
+import { isNationwide, NZ_REGIONS, parseDealerRegions } from "@/lib/regions";
 
 /**
  * Structured search filters for the deal-finder, matching the dropdown/field
@@ -29,7 +30,21 @@ export type ListingSearchFilters = {
 // cap rather than narrowing.
 const RESULTS_LIMIT = 60;
 
-function buildConditions(filters: ListingSearchFilters) {
+/** Dealer.region is free text (see src/lib/regions.ts) — a dealer whose raw
+ * value is e.g. "Wigram, Christchurch" or "Panmure, Auckland; Wigram,
+ * Christchurch" needs to match a search for the real region ("Canterbury",
+ * "Auckland") it covers, not an exact string. Resolves the search's region
+ * filter to the actual raw dealer.region values that belong to it (plus any
+ * "National" dealer, which covers every region). */
+async function resolveRegionRawValues(region: string): Promise<string[]> {
+  const rows = await db.selectDistinct({ region: dealers.region }).from(dealers).where(sql`${dealers.region} is not null`);
+  return rows
+    .map((r) => r.region)
+    .filter((raw): raw is string => raw !== null)
+    .filter((raw) => isNationwide(raw) || parseDealerRegions(raw).includes(region));
+}
+
+async function buildConditions(filters: ListingSearchFilters) {
   // Defense in depth, not the primary fix: a $0/no-disclosed-price listing
   // (an "Enquire"/POA/auction-no-bid case — see turners.ts and
   // twocheapcars.ts) has already shown up from two different adapters now,
@@ -47,7 +62,10 @@ function buildConditions(filters: ListingSearchFilters) {
   // dealer's exact casing/spacing (e.g. "RAV4" vs "Rav 4").
   if (filters.model) conditions.push(ilike(listings.model, `%${filters.model}%`));
   if (filters.transmission) conditions.push(eq(listings.transmission, filters.transmission));
-  if (filters.region) conditions.push(eq(dealers.region, filters.region));
+  if (filters.region) {
+    const rawValues = await resolveRegionRawValues(filters.region);
+    conditions.push(rawValues.length > 0 ? inArray(dealers.region, rawValues) : sql`false`);
+  }
   if (filters.minPrice !== undefined) conditions.push(gte(listings.price, filters.minPrice.toFixed(2)));
   if (filters.maxPrice !== undefined) conditions.push(lte(listings.price, filters.maxPrice.toFixed(2)));
   if (filters.maxMileageKm !== undefined) conditions.push(lte(listings.mileageKm, filters.maxMileageKm));
@@ -63,7 +81,7 @@ export type ListingSearchResult = {
   limited: boolean;
 };
 
-async function runSearchQuery(conditions: ReturnType<typeof buildConditions>) {
+async function runSearchQuery(conditions: Awaited<ReturnType<typeof buildConditions>>) {
   return db
     .select()
     .from(listings)
@@ -77,7 +95,7 @@ async function runSearchQuery(conditions: ReturnType<typeof buildConditions>) {
 }
 
 export async function searchListings(filters: ListingSearchFilters): Promise<ListingSearchResult> {
-  const conditions = buildConditions(filters);
+  const conditions = await buildConditions(filters);
 
   const [rows, [{ totalCount }]] = await Promise.all([
     runSearchQuery(conditions),
@@ -95,7 +113,7 @@ export async function searchListings(filters: ListingSearchFilters): Promise<Lis
  * which defeats the point of the stat (see mileageStats.ts).
  */
 export async function getMileageBracketStats(filters: ListingSearchFilters): Promise<MileageBracketStat[]> {
-  const conditions = buildConditions(filters);
+  const conditions = await buildConditions(filters);
 
   const bracketCase = sql<string>`case
     when ${listings.mileageKm} < 60000 then 'low'
@@ -149,16 +167,14 @@ export async function getDistinctMakes(): Promise<string[]> {
   return rows.map((r) => r.make);
 }
 
-/** Distinct dealer regions, for the search form's Region dropdown. Best-effort —
- * some franchise groups store a multi-region string (e.g. "Auckland, Wellington,
- * Christchurch, Dunedin") as a single value rather than one row per region, so
- * this won't cleanly cover every dealer, but still works for the common
- * single-region case. */
+/** Real NZ regions covered by at least one dealer, for the search form's
+ * Region dropdown. Dealer.region is free text — see src/lib/regions.ts —
+ * so a multi-location value like "Panmure, Auckland; Wigram, Christchurch"
+ * is split into its actual regions ("Auckland", "Canterbury") rather than
+ * shown as one raw, duplicate-prone string. "National"/"Unknown" dealers
+ * contribute no region of their own (see isNationwide/parseDealerRegions). */
 export async function getDistinctRegions(): Promise<string[]> {
-  const rows = await db
-    .selectDistinct({ region: dealers.region })
-    .from(dealers)
-    .where(sql`${dealers.region} is not null`)
-    .orderBy(asc(dealers.region));
-  return rows.map((r) => r.region).filter((r): r is string => r !== null);
+  const rows = await db.selectDistinct({ region: dealers.region }).from(dealers).where(sql`${dealers.region} is not null`);
+  const present = new Set(rows.flatMap((r) => parseDealerRegions(r.region)));
+  return NZ_REGIONS.filter((r) => present.has(r));
 }
