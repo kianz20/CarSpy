@@ -129,6 +129,8 @@ export default async function ListingDetailPage({
           year={listing.year}
           mileageKm={listing.mileageKm}
           deposit={financeEnabled ? budget : undefined}
+          budget={budget}
+          financeEnabled={financeEnabled}
           annualKm={annualKm}
         />
       </section>

@@ -45,6 +45,8 @@ export function OwnershipBreakdown({
   year,
   mileageKm,
   deposit,
+  budget,
+  financeEnabled = true,
   annualKm,
 }: {
   breakdown: OwnershipCostBreakdown;
@@ -55,6 +57,12 @@ export function OwnershipBreakdown({
   year: number | null;
   mileageKm?: number | null;
   deposit?: number;
+  /** Raw budget value, regardless of financeEnabled — unlike `deposit` (which
+   * the caller already blanks out when finance is off), this is what the
+   * insurance toggle below needs to preserve budget/financeEnabled in the
+   * URL when it navigates. */
+  budget?: number;
+  financeEnabled?: boolean;
   annualKm?: number;
 }) {
   const effectiveAnnualKm = annualKm ?? DEFAULT_ANNUAL_KM;
@@ -211,7 +219,8 @@ export function OwnershipBreakdown({
         <InsuranceCoverToggle
           coverType={breakdown.insuranceCoverType}
           searchParams={{
-            ...(deposit !== undefined ? { deposit: String(deposit) } : {}),
+            ...(budget !== undefined ? { budget: String(budget) } : {}),
+            ...(!financeEnabled ? { financeEnabled: "false" } : {}),
             ...(annualKm !== undefined ? { annualKm: String(annualKm) } : {}),
           }}
         />
