@@ -28,6 +28,10 @@ export const CATEGORY_SEED: CategorySeedRow[] = [
   { kind: "body_type", value: "people_mover", label: "People Mover", sortOrder: 6 },
   { kind: "body_type", value: "coupe", label: "Coupe", sortOrder: 7 },
   { kind: "body_type", value: "convertible", label: "Convertible", sortOrder: 8 },
+  // Not a car, but some dealers (e.g. Motorcentral's GVI) list e-bikes/
+  // mopeds/scooters ("Motorbike" as their body style) alongside cars in the
+  // same inventory feed — tagging them lets a car search filter them out.
+  { kind: "body_type", value: "motorcycle", label: "Motorcycle / Scooter", sortOrder: 9 },
 
   // --- Powertrains ---
   { kind: "powertrain", value: "petrol", label: "Petrol", sortOrder: 0 },

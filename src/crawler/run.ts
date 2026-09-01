@@ -22,7 +22,15 @@ import type { NormalizedListing } from "../lib/crawler/types";
  * one dealer wait for another to finish (unlike the request-level
  * concurrency caps inside each adapter, which bound load on a single site).
  */
-const DEALER_CONCURRENCY = 6;
+// Each dealer hits a completely different domain, so this is really "how
+// many independent network round-trips can be in flight at once" rather than
+// load on any single site — the per-site politeness caps live inside each
+// adapter instead (DETAIL_FETCH_CONCURRENCY etc). 32 of the 41 active dealers
+// are on Motorcentral, mostly small independent yards with a few hundred
+// listings each, not the two-adapter-thousand-listing chains — so most waves
+// finish quickly and the old cap of 6 just added idle waves waiting on
+// nothing in particular.
+const DEALER_CONCURRENCY = 16;
 
 type Adapter = (baseUrl: string, existingExternalIds: Set<string>) => Promise<NormalizedListing[]>;
 

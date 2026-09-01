@@ -80,6 +80,7 @@ type ListingCard = {
   mileageKm?: number;
   engine?: string;
   transmission?: string;
+  imageUrl?: string;
 };
 
 function parseListFragment(html: string): ListingCard[] {
@@ -96,6 +97,10 @@ function parseListFragment(html: string): ListingCard[] {
 
     if (!url || !externalId || !rawTitle || price === undefined) return;
 
+    // Prefer the "large" variant carried in data-image (used for the quick
+    // view/gallery) over the thumbnail <img> src, which is a smaller "medium" crop.
+    const imageUrl = $(el).find("[data-image]").first().attr("data-image") ?? $(el).find(".thumb img").first().attr("src");
+
     let mileageKm: number | undefined;
     let engine: string | undefined;
     let transmission: string | undefined;
@@ -110,7 +115,7 @@ function parseListFragment(html: string): ListingCard[] {
         else transmission = normalizeTransmission(text) ?? transmission;
       });
 
-    cards.push({ externalId, url, rawTitle, price, mileageKm, engine, transmission });
+    cards.push({ externalId, url, rawTitle, price, mileageKm, engine, transmission, imageUrl });
   });
 
   return cards;
@@ -185,6 +190,7 @@ export async function crawlCarUpdaterDealer(
       powertrain: detailFields?.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,
+      imageUrl: card.imageUrl,
     };
   });
 }

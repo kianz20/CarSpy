@@ -49,6 +49,7 @@ type ListingPageCard = {
   transmission?: string;
   powertrain?: string;
   engine?: string;
+  imageUrl?: string;
 };
 
 function parseListingPage(html: string, origin: string): ListingPageCard[] {
@@ -89,6 +90,13 @@ function parseListingPage(html: string, origin: string): ListingPageCard[] {
     // instead of assuming a fixed position.
     const { mileageKm, transmission, powertrain, engine } = classifySpecLine(specsText);
 
+    // The card's photo sits alongside a promo badge image (class varies —
+    // "on-sale", "new", etc., so denylisting classes is fragile) inside the
+    // same wrapper. The actual car photo is the only <img> here with an
+    // `alt` attribute, which is what actually distinguishes it.
+    const imageSrc = $(el).find(".cell-photo img[alt]").first().attr("src");
+    const imageUrl = imageSrc ? new URL(imageSrc, origin).toString() : undefined;
+
     cards.push({
       externalId,
       url: `${origin}${pathPart}`,
@@ -98,13 +106,19 @@ function parseListingPage(html: string, origin: string): ListingPageCard[] {
       transmission,
       powertrain,
       engine,
+      imageUrl,
     });
   });
 
   return cards;
 }
 
-async function fetchDetailBodyType(url: string): Promise<string | undefined> {
+// Exported for the one-off body-type backfill script (see
+// scripts/backfillBodyType.ts) — re-fetches this same detail-page field for
+// already-known listings whose body type came back unrecognized on first
+// sighting (e.g. the "Motorbike" case fixed in normalize.ts), since the
+// regular crawl only fetches the detail page once, on first sighting.
+export async function fetchDetailBodyType(url: string): Promise<string | undefined> {
   const html = await fetchHtml(url);
 
   // Template tiers differ in what they embed, not just how they look: Team
@@ -186,6 +200,7 @@ export async function crawlMotorcentralDealer(
       powertrain: card.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,
+      imageUrl: card.imageUrl,
     };
   });
 }

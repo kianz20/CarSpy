@@ -4,6 +4,7 @@ import {
   getDistinctMakes,
   getDistinctRegions,
   type ListingSearchFilters,
+  type ListingSort,
 } from "@/lib/search/listings";
 import type { MileageBracketStat } from "@/lib/search/mileageStats";
 import { getCategoryOptions } from "@/lib/taxonomy/query";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/ownership";
 import { SearchForm } from "@/components/search-form";
 import { MileageStatsBar } from "@/components/mileage-stats-bar";
+import { SortSelect } from "@/components/sort-select";
 import { ListingCard, type ListingCardData } from "@/components/listing-card";
 import { Disclaimer } from "@/components/disclaimer";
 
@@ -52,6 +54,7 @@ export default async function Home({
     "financeEnabled",
     "annualKm",
     "insuranceCoverType",
+    "sort",
   ]) {
     const value = first(params[key]);
     if (value) current[key] = value;
@@ -73,6 +76,8 @@ export default async function Home({
   // enabled, so skip the (real, DB-hitting) search entirely until then.
   const financeEnabled = current.financeEnabled !== "false";
   const hasSearched = current.financeEnabled !== undefined;
+  const sort: ListingSort =
+    current.sort === "price" || current.sort === "mileage" ? current.sort : "total";
 
   const filters: ListingSearchFilters = {
     bodyType: current.bodyType,
@@ -108,7 +113,7 @@ export default async function Home({
 
   if (hasSearched) {
     const [searchResult, stats] = await Promise.all([
-      searchListings(filters),
+      searchListings(filters, sort, { ...financeOptions, annualKm, insuranceCoverType }),
       getMileageBracketStats(filters),
     ]);
     totalCount = searchResult.totalCount;
@@ -129,13 +134,14 @@ export default async function Home({
       price: parseFloat(row.listings.price),
       dealerName: row.dealers.name,
       dealerRegion: row.dealers.region,
+      imageUrl: row.listings.imageUrl,
     }));
   }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       <header>
-        <h1 className="text-2xl font-bold">Find Your Car</h1>
+        <h1 className="text-2xl font-bold">Find Your Car (BETA)</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Search NZ dealer inventory and compare asking prices against what
           similar-mileage examples are currently going for.
@@ -160,11 +166,18 @@ export default async function Home({
         <>
           {totalCount > 0 && <MileageStatsBar stats={mileageStats} />}
 
+          {listingsData.length > 0 && (
+            <div className="flex justify-end">
+              <SortSelect current={sort} />
+            </div>
+          )}
+
           {limited && (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Showing the cheapest {listingsData.length} of{" "}
-              {totalCount.toLocaleString()} matching listings — narrow your
-              search (body type, make, price, mileage) to see others.
+              Showing the {sort === "mileage" ? "lowest-mileage" : "cheapest"}{" "}
+              {listingsData.length} of {totalCount.toLocaleString()} matching
+              listings — narrow your search (body type, make, price, mileage)
+              to see others.
             </p>
           )}
 

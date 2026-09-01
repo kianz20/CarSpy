@@ -3,6 +3,11 @@ import { db } from "@/db/client";
 import { listings, dealers } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
 import { isNationwide, NZ_REGIONS, parseDealerRegions } from "@/lib/regions";
+import {
+  estimate3YearOwnershipCost,
+  type FinanceOptions,
+  type InsuranceCoverType,
+} from "@/lib/ownership";
 
 /**
  * Structured search filters for the deal-finder, matching the dropdown/field
@@ -21,6 +26,17 @@ export type ListingSearchFilters = {
   maxMileageKm?: number;
   minYear?: number;
   maxYear?: number;
+};
+
+export type ListingSort = "total" | "price" | "mileage";
+
+/** Only needed for sort "total" — the same finance/insurance inputs page.tsx
+ * feeds into estimate3YearOwnershipCost for display, so the sort order
+ * matches the total-cost figure the user actually sees on each card. */
+export type TotalCostSortOptions = {
+  financeOptions?: FinanceOptions;
+  annualKm?: number;
+  insuranceCoverType?: InsuranceCoverType;
 };
 
 // A search with no filters at all matches every active listing (~9,000+ and
@@ -75,34 +91,76 @@ async function buildConditions(filters: ListingSearchFilters) {
   return and(...conditions);
 }
 
+type SearchRow = Awaited<ReturnType<typeof runSearchQuery>>[number];
+
 export type ListingSearchResult = {
-  rows: Awaited<ReturnType<typeof runSearchQuery>>;
+  rows: SearchRow[];
   totalCount: number;
   limited: boolean;
 };
 
-async function runSearchQuery(conditions: Awaited<ReturnType<typeof buildConditions>>) {
-  return db
+async function runSearchQuery(conditions: Awaited<ReturnType<typeof buildConditions>>, sort: ListingSort) {
+  const query = db
     .select()
     .from(listings)
     .innerJoin(dealers, eq(listings.dealerId, dealers.id))
-    .where(conditions)
-    // No ranking model yet (Phase 5 was deliberately skipped, see PLAN.md) —
-    // cheapest-first is at least a stable, intuitive default rather than
-    // arbitrary DB order.
-    .orderBy(asc(listings.price))
-    .limit(RESULTS_LIMIT);
+    .where(conditions);
+
+  if (sort === "mileage") {
+    // Nulls last — a listing with unknown mileage shouldn't rank as "0km".
+    return query.orderBy(sql`${listings.mileageKm} is null`, asc(listings.mileageKm)).limit(RESULTS_LIMIT);
+  }
+  if (sort === "price") {
+    return query.orderBy(asc(listings.price)).limit(RESULTS_LIMIT);
+  }
+
+  // "total" (asking + 3-year ownership cost) can't be pushed down to SQL —
+  // it depends on the same bracket-estimate math as the displayed ownership
+  // breakdown (finance/fuel/servicing/insurance/repairs by body type,
+  // powertrain, age, etc). Fetch every matching row (already scanned once
+  // for the count query below, so this isn't a new class of cost) and sort
+  // in JS, since ordering has to happen before the RESULTS_LIMIT cut — the
+  // cheapest-by-price top 60 isn't necessarily the cheapest-by-total 60.
+  return query.orderBy(asc(listings.price));
 }
 
-export async function searchListings(filters: ListingSearchFilters): Promise<ListingSearchResult> {
+export async function searchListings(
+  filters: ListingSearchFilters,
+  sort: ListingSort = "total",
+  totalCostOptions: TotalCostSortOptions = {},
+): Promise<ListingSearchResult> {
   const conditions = await buildConditions(filters);
 
-  const [rows, [{ totalCount }]] = await Promise.all([
-    runSearchQuery(conditions),
+  const [allRows, [{ totalCount }]] = await Promise.all([
+    runSearchQuery(conditions, sort),
     db.select({ totalCount: count() }).from(listings).innerJoin(dealers, eq(listings.dealerId, dealers.id)).where(conditions),
   ]);
 
-  return { rows, totalCount, limited: totalCount > rows.length };
+  if (sort !== "total") {
+    return { rows: allRows, totalCount, limited: totalCount > allRows.length };
+  }
+
+  const ranked = allRows
+    .map((row) => {
+      const price = parseFloat(row.listings.price);
+      const ownershipTotal = estimate3YearOwnershipCost(
+        {
+          make: row.listings.make,
+          year: row.listings.year ?? undefined,
+          bodyType: row.listings.bodyType ?? undefined,
+          powertrain: row.listings.powertrain ?? undefined,
+          price,
+          mileageKm: row.listings.mileageKm ?? undefined,
+        },
+        totalCostOptions,
+      ).total;
+      return { row, totalCost: price + ownershipTotal };
+    })
+    .sort((a, b) => a.totalCost - b.totalCost)
+    .slice(0, RESULTS_LIMIT)
+    .map(({ row }) => row);
+
+  return { rows: ranked, totalCount, limited: totalCount > ranked.length };
 }
 
 /**

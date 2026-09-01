@@ -41,7 +41,20 @@ export async function ingestDealerListings(
     markedDelisted: 0,
   };
 
-  const existing = await db.select().from(listings).where(eq(listings.dealerId, dealerId));
+  // Only the columns actually used below (price-change diffing, the
+  // missed-crawl sweep) — pulling every column (25+, including the sizeable
+  // rawJson blob) for a dealer's full existing inventory just to read four
+  // fields was unnecessary DB/network cost on every crawl.
+  const existing = await db
+    .select({
+      id: listings.id,
+      externalId: listings.externalId,
+      price: listings.price,
+      status: listings.status,
+      missedCrawls: listings.missedCrawls,
+    })
+    .from(listings)
+    .where(eq(listings.dealerId, dealerId));
   const existingByExternalId = new Map(existing.map((row) => [row.externalId, row]));
   const seenExternalIds = new Set(scraped.map((item) => item.externalId));
   const now = new Date();
@@ -61,6 +74,7 @@ export async function ingestDealerListings(
       powertrain: item.powertrain,
       mileageKm: item.mileageKm,
       vin: item.vin,
+      imageUrl: item.imageUrl,
       price: item.price.toFixed(2),
       status: "active" as const,
       missedCrawls: 0,
@@ -90,6 +104,7 @@ export async function ingestDealerListings(
           powertrain: sql`coalesce(excluded.powertrain, ${listings.powertrain})`,
           mileageKm: sql`coalesce(excluded.mileage_km, ${listings.mileageKm})`,
           vin: sql`coalesce(excluded.vin, ${listings.vin})`,
+          imageUrl: sql`coalesce(excluded.image_url, ${listings.imageUrl})`,
           price: sql`excluded.price`,
           status: "active",
           missedCrawls: 0,

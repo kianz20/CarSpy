@@ -53,6 +53,7 @@ export const listings = pgTable(
     condition: text("condition"),
     importStatus: text("import_status"), // 'nz_new' | 'import' | null — display badge only, not used in valuation math (see PLAN.md §2)
     vin: text("vin"), // used for cross-site dedup when a dealer exposes it (rare)
+    imageUrl: text("image_url"), // dealer's own primary listing photo, hotlinked — null falls back to a stock photo on the frontend
 
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     priceIncludesAddOns: boolean("price_includes_add_ons").notNull().default(false), // true if addOnsJson below was parsed out of an itemized price

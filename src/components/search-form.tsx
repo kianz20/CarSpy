@@ -383,6 +383,12 @@ export function SearchForm({
         )}
         </div>
 
+        {/* Sort lives in its own control above the results (see SortSelect),
+            not in this filter bar — but it still has to round-trip through
+            this form's own navigation, or picking a filter would silently
+            reset sort back to the default. */}
+        <input type="hidden" name="sort" value={current.sort ?? "total"} />
+
         <SearchButton />
       </Form>
     </div>

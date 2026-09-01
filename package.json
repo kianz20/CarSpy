@@ -15,7 +15,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:dealers": "tsx src/db/seedDealers.ts",
-    "crawl": "tsx src/crawler/run.ts"
+    "crawl": "tsx src/crawler/run.ts",
+    "crawl:backfill-body-type": "tsx src/crawler/backfillBodyType.ts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

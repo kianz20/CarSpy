@@ -4,6 +4,8 @@ import { getListingById } from "@/lib/search/listings";
 import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
 import { Disclaimer } from "@/components/disclaimer";
+import { ListingImage } from "@/components/listing-image";
+import { getStockImageUrl } from "@/lib/stockImage";
 import { formatCurrency, formatEngine, formatNumber } from "@/lib/format";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -90,6 +92,12 @@ export default async function ListingDetailPage({
         {listing.variant && <p className="text-sm text-zinc-500 dark:text-zinc-400">{listing.variant}</p>}
       </header>
 
+      <ListingImage
+        src={listing.imageUrl ?? undefined}
+        fallbackSrc={getStockImageUrl(listing.make, listing.model, listing.year ?? undefined)}
+        alt={`${listing.year ?? ""} ${listing.make} ${listing.model}`.trim()}
+      />
+
       <div className="flex flex-wrap items-baseline justify-between gap-4 rounded-lg border border-black/10 p-4 dark:border-white/15">
         <div>
           <div className="text-3xl font-bold">{formatCurrency(price)}</div>
@@ -106,7 +114,7 @@ export default async function ListingDetailPage({
       </div>
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border border-black/10 p-4 text-sm dark:border-white/15 sm:grid-cols-3">
-        <Detail label="Mileage" value={listing.mileageKm !== null ? `${formatNumber(listing.mileageKm)} km` : undefined} />
+        <Detail label="Mileage" value={listing.mileageKm !== null ? (listing.mileageKm === 0 ? "New" : `${formatNumber(listing.mileageKm)} km`) : undefined} />
         <Detail label="Transmission" value={listing.transmission ?? undefined} capitalize />
         <Detail label="Fuel type" value={listing.powertrain ?? undefined} capitalize />
         <Detail label="Vehicle type" value={listing.bodyType?.replace("_", " ")} capitalize />

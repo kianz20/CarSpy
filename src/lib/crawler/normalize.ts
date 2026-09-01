@@ -104,6 +104,12 @@ export function normalizePowertrain(raw: string | undefined): string | undefined
   if (lower.includes("hybrid") && (lower.includes("plug") || lower.includes("phev"))) return "phev";
   if (lower.includes("hybrid")) return "hybrid";
   if (lower.includes("electric") || lower === "ev") return "ev";
+  // Some Motorcentral EV listings (e.g. Nissan Leafs) skip a fuel-type word
+  // entirely and put battery State of Health where it'd normally go instead
+  // — "24X 67% SOH" — since it's a used-EV-specific detail dealers consider
+  // more useful than restating the obvious. SOH is otherwise EV-only, so
+  // it's an equally reliable powertrain signal.
+  if (lower.includes("soh")) return "ev";
   if (lower.includes("diesel")) return "diesel";
   if (lower.includes("petrol") || lower.includes("gas")) return "petrol";
   return undefined;
@@ -113,6 +119,7 @@ export function normalizePowertrain(raw: string | undefined): string | undefined
 export function normalizeBodyType(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   const lower = raw.toLowerCase();
+  if (lower.includes("motorbike") || lower.includes("motorcycle") || lower.includes("scooter") || lower.includes("moped")) return "motorcycle";
   if (lower.includes("suv") || lower.includes("rv/")) return "suv";
   if (lower.includes("ute") || lower.includes("utility") || lower.includes("pickup")) return "ute";
   if (lower.includes("hatch")) return "hatch";

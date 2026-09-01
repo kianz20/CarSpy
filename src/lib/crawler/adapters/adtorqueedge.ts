@@ -43,6 +43,7 @@ type ListingCard = {
   powertrain?: string;
   bodyType?: string;
   vin?: string;
+  imageUrl?: string;
 };
 
 function parseListPage(html: string, origin: string): ListingCard[] {
@@ -73,6 +74,7 @@ function parseListPage(html: string, origin: string): ListingCard[] {
     const powertrain = normalizePowertrain(features.find(".fuel").first().text());
     const bodyType = normalizeBodyType(features.find(".body-type").first().text());
     const vin = $(el).attr("data-vin") || undefined;
+    const imageUrl = $(el).find(".si-gallery img").first().attr("src");
 
     cards.push({
       externalId,
@@ -86,6 +88,7 @@ function parseListPage(html: string, origin: string): ListingCard[] {
       powertrain,
       bodyType,
       vin,
+      imageUrl,
     });
   });
 
@@ -139,5 +142,6 @@ export async function crawlAdTorqueEdgeDealer(
     mileageKm: card.mileageKm,
     price: card.price,
     vin: card.vin,
+    imageUrl: card.imageUrl,
   }));
 }

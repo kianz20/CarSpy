@@ -94,6 +94,9 @@ function parseCarSchemaDetail(html: string, url: string): NormalizedListing | un
   // the other adapters' titles.
   const { variant } = name ? parseVehicleTitle(name) : { variant: undefined };
 
+  // Unlike every other string field here, "image" is double-quoted (not
+  // single-quoted) in the raw source — confirmed against a real detail page.
+  const imageUrl = extractField(schema, /"image":\s*"([^"]*)"/);
   const vin = extractField(schema, /"vehicleIdentificationNumber":\s*'([^']*)'/);
   const mileageRaw = extractField(schema, /"mileageFromOdometer":\s*\{[\s\S]*?"value":\s*'([^']*)'/);
   const bodyTypeRaw = extractField(schema, /"bodyType":\s*'([^']*)'/);
@@ -113,6 +116,7 @@ function parseCarSchemaDetail(html: string, url: string): NormalizedListing | un
     mileageKm: mileageRaw ? parseMileageKm(mileageRaw) : undefined,
     price,
     vin: vin || undefined,
+    imageUrl,
   };
 }
 

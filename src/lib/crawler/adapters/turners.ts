@@ -121,6 +121,10 @@ function parseResultsFragment(html: string, origin: string): NormalizedListing[]
     // these, so they can't feed the valuation model regardless.
     if (price === undefined) return;
 
+    // The first slide's `src` is always a "default-car.png" placeholder
+    // (lazy-loaded) — the real photo URL is in `data-original` instead.
+    const imageUrl = card.find('img[itemprop="image"]').first().attr("data-original");
+
     const bodyType = normalizeBodyType(card.find('[itemprop="bodyType"]').first().text());
     const powertrain = normalizePowertrain(card.find('[itemprop="fuelType"]').first().text());
 
@@ -147,6 +151,7 @@ function parseResultsFragment(html: string, origin: string): NormalizedListing[]
       powertrain,
       mileageKm: fields["odometer"] ? parseMileageKm(fields["odometer"]) : undefined,
       price,
+      imageUrl,
     });
   });
 

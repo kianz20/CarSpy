@@ -51,7 +51,18 @@ function slugify(value: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-type ArmstrongsRecord = Record<string, string>;
+type ArmstrongsRecord = Record<string, string> & {
+  Images?: { Image?: { "@url"?: string }[] | { "@url"?: string } };
+};
+
+/** The feed's Images.Image is an array normally, but a single-image listing
+ * collapses it to a bare object instead (typical of XML-to-JSON conversion) —
+ * handle both shapes rather than assuming it's always an array. */
+function firstImageUrl(record: ArmstrongsRecord): string | undefined {
+  const image = record.Images?.Image;
+  if (!image) return undefined;
+  return Array.isArray(image) ? image[0]?.["@url"] : image["@url"];
+}
 
 function parseRecord(record: ArmstrongsRecord, origin: string): NormalizedListing | undefined {
   // Only used stock — this feed also carries new and demo vehicles, out of
@@ -83,6 +94,7 @@ function parseRecord(record: ArmstrongsRecord, origin: string): NormalizedListin
     mileageKm,
     price,
     vin: record["@LISTING_VIN"] || undefined,
+    imageUrl: firstImageUrl(record),
   };
 }
 
