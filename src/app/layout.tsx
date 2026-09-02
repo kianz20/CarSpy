@@ -35,6 +35,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The inline script below sets data-theme on this element before React
+      // hydrates (to avoid a light-mode flash for a returning dark-mode
+      // visitor), which the server has no way to know when rendering — an
+      // expected, intentional mismatch Next/React's docs call out this exact
+      // suppression for, not a bug to chase.
+      suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
