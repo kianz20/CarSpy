@@ -63,7 +63,8 @@ export function SearchForm({
   // touch annualKm/insuranceCoverType/financeEnabled/deposit, so there's no
   // point showing it just because one of those alone is set.
   const hasAnyFilter = (source: Record<string, string>) =>
-    FILTER_FIELD_NAMES.some((name) => source[name]);
+    FILTER_FIELD_NAMES.some((name) => source[name]) ||
+    source.includeMotorcycles === "true";
   const [prevFormKey, setPrevFormKey] = useState(formKey);
   const [hasFilters, setHasFilters] = useState(hasAnyFilter(current));
   if (formKey !== prevFormKey) {
@@ -94,7 +95,7 @@ export function SearchForm({
     setHasFilters(
       FILTER_FIELD_NAMES.some(
         (name) => String(formData.get(name) ?? "").trim() !== "",
-      ),
+      ) || formData.get("includeMotorcycles") === "true",
     );
     if (String(formData.get("deposit") ?? "").trim() !== "") {
       setDepositError(false);
@@ -134,6 +135,10 @@ export function SearchForm({
         field.value = "";
       }
     }
+    const includeMotorcycles = form?.querySelector<HTMLInputElement>(
+      'input[name="includeMotorcycles"][type="checkbox"]',
+    );
+    if (includeMotorcycles) includeMotorcycles.checked = false;
     setHasFilters(false);
   }
 
@@ -345,6 +350,25 @@ export function SearchForm({
               `first()` in page.tsx picks "true"; unchecked → only "false"
               submits. */}
           <input type="hidden" name="financeEnabled" value="false" />
+        </Field>
+
+        <Field label="Motorcycles & scooters" className="col-span-2">
+          <div className="flex min-h-[30px] items-center gap-2">
+            <input
+              type="checkbox"
+              name="includeMotorcycles"
+              value="true"
+              defaultChecked={current.includeMotorcycles === "true"}
+              className="h-4 w-4 rounded border-border accent-accent"
+            />
+            <span className="text-sm font-normal text-foreground/80">
+              Include motorbikes &amp; scooters in results
+            </span>
+          </div>
+          {/* Same checked/hidden-fallback pairing as financeEnabled above —
+              an unchecked checkbox submits nothing, so this distinguishes
+              "explicitly off" from "never touched". */}
+          <input type="hidden" name="includeMotorcycles" value="false" />
         </Field>
 
         {financeEnabled && (

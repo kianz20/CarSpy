@@ -1,6 +1,6 @@
 import { and, asc, count, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { listings, dealers } from "@/db/schema";
+import { listings, dealers, vehicleModelDescriptions } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
 import { isNationwide, NZ_REGIONS, parseDealerRegions } from "@/lib/regions";
 import {
@@ -26,6 +26,11 @@ export type ListingSearchFilters = {
   maxMileageKm?: number;
   minYear?: number;
   maxYear?: number;
+  /** Motorcycles/scooters are excluded from results by default (see
+   * src/lib/taxonomy/data.ts's "motorcycle" body type) — most shoppers here
+   * are car-shopping, and mixing in bikes muddies price/mileage comparisons.
+   * Explicitly picking bodyType "motorcycle" still works regardless of this. */
+  includeMotorcycles?: boolean;
 };
 
 export type ListingSort = "total" | "price" | "mileage";
@@ -81,6 +86,7 @@ async function buildConditions(filters: ListingSearchFilters) {
   const conditions = [eq(listings.status, "active"), sql`${listings.price} > 0`];
 
   if (filters.bodyType) conditions.push(eq(listings.bodyType, filters.bodyType));
+  else if (!filters.includeMotorcycles) conditions.push(sql`${listings.bodyType} is distinct from 'motorcycle'`);
   if (filters.powertrain) conditions.push(eq(listings.powertrain, filters.powertrain));
   if (filters.make) conditions.push(eq(listings.make, filters.make));
   // Model is partial/case-insensitive (ilike), unlike make's exact-match
@@ -236,6 +242,18 @@ export async function getMileageBracketStats(filters: ListingSearchFilters): Pro
  * searchable). */
 export async function getListingById(id: number) {
   const [row] = await db.select().from(listings).innerJoin(dealers, eq(listings.dealerId, dealers.id)).where(eq(listings.id, id));
+  return row;
+}
+
+/** AI-written overview/reliability notes for a make+model (see
+ * vehicle_model_descriptions) — seeded by make+model, not by generation/year,
+ * so this is a best-effort match rather than a per-listing lookup. Returns
+ * undefined for anything not yet seeded (most models, for now). */
+export async function getVehicleModelDescription(make: string, model: string) {
+  const [row] = await db
+    .select()
+    .from(vehicleModelDescriptions)
+    .where(and(eq(vehicleModelDescriptions.make, make), ilike(vehicleModelDescriptions.model, model)));
   return row;
 }
 

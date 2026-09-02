@@ -39,7 +39,7 @@ export function ListingImage({
       className={
         compact
           ? "h-20 w-28 shrink-0 rounded-lg border border-border bg-surface-2 object-cover"
-          : "w-full rounded-xl border border-border bg-surface-2 object-contain"
+          : "mx-auto max-h-[40rem] w-auto max-w-full rounded-xl border border-border bg-surface-2 object-contain"
       }
     />
   );

@@ -97,3 +97,18 @@ export const vehicleCategories = pgTable(
   },
   (table) => [uniqueIndex("vehicle_categories_kind_value_idx").on(table.kind, table.value)],
 );
+
+// Vehicle model descriptions with reliability notes and common issues
+export const vehicleModelDescriptions = pgTable(
+  "vehicle_model_descriptions",
+  {
+    id: serial("id").primaryKey(),
+    make: text("make").notNull(), // e.g. 'Toyota'
+    model: text("model").notNull(), // e.g. 'Corolla'
+    description: text("description").notNull(), // overview of the model
+    reliabilityIssues: text("reliability_issues"), // common issues and reliability concerns
+    notes: text("notes"), // additional notes (e.g. popular variants, features)
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("vehicle_model_descriptions_make_model_idx").on(table.make, table.model)],
+);

@@ -80,6 +80,16 @@ function engineSizeMultiplier(bodyType: string | undefined, engine: string | und
 // Hybrids roughly halve petrol consumption vs. their equivalent ICE body type.
 const HYBRID_MULTIPLIER = 0.55;
 
+// A hybrid's petrol engine mostly just drives the generator/assists the electric
+// motor, so a bigger displacement doesn't blow out fuel burn the way it does in
+// a pure ICE — the electric motor and regen braking absorb most of that. Only
+// let engine size nudge the hybrid estimate by a fraction of the ICE adjustment.
+const HYBRID_ENGINE_SIZE_DAMPING = 0.15;
+
+function dampenedMultiplier(multiplier: number, damping: number): number {
+  return 1 + (multiplier - 1) * damping;
+}
+
 const EV_KWH_BY_BODY_TYPE: Record<string, number> = {
   hatch: 15,
   sedan: 16,
@@ -109,7 +119,9 @@ export function estimateConsumption(
   // not applied to EV kWh/100km (no combustion engine) or PHEV's fixed small
   // backup-engine figure (dominated by how much it's actually driven on
   // battery vs. engine, not the engine's own displacement).
-  const baseIce = ((bodyType ? PETROL_DIESEL_BY_BODY_TYPE[bodyType] : undefined) ?? DEFAULT_PETROL_DIESEL_L_PER_100KM) * engineSizeMultiplier(bodyType, engine);
+  const bracketIce = (bodyType ? PETROL_DIESEL_BY_BODY_TYPE[bodyType] : undefined) ?? DEFAULT_PETROL_DIESEL_L_PER_100KM;
+  const rawEngineMultiplier = engineSizeMultiplier(bodyType, engine);
+  const baseIce = bracketIce * rawEngineMultiplier;
 
   switch (powertrain) {
     case "ev":
@@ -117,7 +129,10 @@ export function estimateConsumption(
     case "phev":
       return { litresPer100Km: PHEV_L_PER_100KM, kwhPer100Km: PHEV_KWH_PER_100KM };
     case "hybrid":
-      return { litresPer100Km: baseIce * HYBRID_MULTIPLIER };
+      return {
+        litresPer100Km:
+          bracketIce * HYBRID_MULTIPLIER * dampenedMultiplier(rawEngineMultiplier, HYBRID_ENGINE_SIZE_DAMPING),
+      };
     case "petrol":
     case "diesel":
     default:

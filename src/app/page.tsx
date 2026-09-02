@@ -52,6 +52,7 @@ export default async function Home({
     "minPrice",
     "maxPrice",
     "maxMileageKm",
+    "includeMotorcycles",
     "deposit",
     "financeEnabled",
     "annualKm",
@@ -93,6 +94,7 @@ export default async function Home({
     maxMileageKm: toNumber(current.maxMileageKm),
     minYear: toNumber(current.minYear),
     maxYear: toNumber(current.maxYear),
+    includeMotorcycles: current.includeMotorcycles === "true",
   };
 
   // Finance off means no loan is modeled at all — depositFraction: 1 forces
@@ -147,7 +149,7 @@ export default async function Home({
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <header className="mb-6 flex flex-col gap-2 lg:mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          Find your next <span className="accent-gradient-text">car</span>, not just a listing
+          Find your next <span className="accent-gradient-text">car</span>
         </h1>
         <p className="max-w-2xl text-sm text-muted">
           Search NZ dealer inventory nationwide and compare asking prices against the real

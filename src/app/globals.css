@@ -136,6 +136,16 @@ body {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent);
   background: var(--surface);
 }
+.field[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.field[type="number"]::-webkit-outer-spin-button,
+.field[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 .btn {
   display: inline-flex;
