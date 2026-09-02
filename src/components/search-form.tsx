@@ -140,7 +140,7 @@ export function SearchForm({
   return (
     <div key={formKey}>
       <Form action="" onChange={handleFormChange} className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3">
         <Field label="Vehicle type">
           <select
             name="bodyType"

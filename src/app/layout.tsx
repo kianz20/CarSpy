@@ -52,7 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-md">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
+          <div className="mx-auto flex w-full max-w-[1700px] items-center justify-between px-4 py-2.5 sm:px-6 lg:px-10">
             <Link href="/" className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
               <span className="accent-gradient-text text-base">CarValue</span>
               <span className="pill bg-accent/10 text-accent">BETA</span>

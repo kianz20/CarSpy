@@ -144,8 +144,8 @@ export default async function Home({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6">
-      <header className="flex flex-col gap-2">
+    <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+      <header className="mb-6 flex flex-col gap-2 lg:mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
           Find your next <span className="accent-gradient-text">car</span>, not just a listing
         </h1>
@@ -156,85 +156,91 @@ export default async function Home({
         </p>
       </header>
 
-      <div className="card p-4 sm:p-5">
-        <SearchForm
-          bodyTypes={bodyTypes}
-          powertrains={powertrains}
-          makes={makes}
-          regions={regions}
-          current={current}
-        />
-      </div>
-
-      <Disclaimer />
-
-      {!hasSearched ? (
-        <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
-          <div className="text-3xl">🔍</div>
-          <p className="text-sm font-medium">Set your filters above, then hit Search</p>
-          <p className="text-xs text-muted">Matching listings will show up right here.</p>
-        </div>
-      ) : (
-        <>
-          {totalCount > 0 && <MileageStatsBar stats={mileageStats} />}
-
-          {listingsData.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted">
-                <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
-                matching listing{totalCount === 1 ? "" : "s"}
-              </p>
-              <SortSelect current={sort} />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3">
-            {listingsData.length === 0 ? (
-              <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
-                <div className="text-3xl">🚗💨</div>
-                <p className="text-sm font-medium">No listings match your search yet</p>
-                <p className="text-xs text-muted">Try loosening a filter.</p>
-              </div>
-            ) : (
-              <AnimatedList>
-                {listingsData.map((listing) => {
-                  // Carries every current filter/sort/finance param (not
-                  // just the finance ones) so the detail page's "Back to
-                  // search" link can return to the exact search, not just
-                  // restore the ownership-cost inputs — a plain Link isn't
-                  // real browser history, so it has to reconstruct the full
-                  // URL itself.
-                  const detailParams = new URLSearchParams(current);
-                  if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
-                  const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
-
-                  return (
-                    <ListingCard
-                      key={listing.id}
-                      listing={listing}
-                      detailHref={detailHref}
-                      ownershipCost={estimate3YearOwnershipCost(
-                        {
-                          make: listing.make,
-                          year: listing.year ?? undefined,
-                          bodyType: listing.bodyType ?? undefined,
-                          powertrain: listing.powertrain ?? undefined,
-                          engine: listing.engine ?? undefined,
-                          price: listing.price,
-                          mileageKm: listing.mileageKm ?? undefined,
-                        },
-                        { ...financeOptions, annualKm, insuranceCoverType },
-                      )}
-                    />
-                  );
-                })}
-              </AnimatedList>
-            )}
+      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:items-start lg:gap-8">
+        <aside className="mb-6 lg:sticky lg:top-20 lg:mb-0">
+          <div className="card p-4 sm:p-5">
+            <SearchForm
+              bodyTypes={bodyTypes}
+              powertrains={powertrains}
+              makes={makes}
+              regions={regions}
+              current={current}
+            />
           </div>
+        </aside>
 
-          <Pagination current={current} page={resolvedPage} pageCount={pageCount} />
-        </>
-      )}
+        <main className="flex min-w-0 flex-col gap-6">
+          <Disclaimer />
+
+          {!hasSearched ? (
+            <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
+              <div className="text-3xl">🔍</div>
+              <p className="text-sm font-medium">Set your filters, then hit Search</p>
+              <p className="text-xs text-muted">Matching listings will show up right here.</p>
+            </div>
+          ) : (
+            <>
+              {totalCount > 0 && <MileageStatsBar stats={mileageStats} />}
+
+              {listingsData.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted">
+                    <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
+                    matching listing{totalCount === 1 ? "" : "s"}
+                  </p>
+                  <SortSelect current={sort} />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {listingsData.length === 0 ? (
+                  <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
+                    <div className="text-3xl">🚗💨</div>
+                    <p className="text-sm font-medium">No listings match your search yet</p>
+                    <p className="text-xs text-muted">Try loosening a filter.</p>
+                  </div>
+                ) : (
+                  <AnimatedList>
+                    {listingsData.map((listing) => {
+                      // Carries every current filter/sort/finance param
+                      // (not just the finance ones) so the detail page's
+                      // "Back to search" link can return to the exact
+                      // search, not just restore the ownership-cost
+                      // inputs — a plain Link isn't real browser history,
+                      // so it has to reconstruct the full URL itself.
+                      const detailParams = new URLSearchParams(current);
+                      if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
+                      const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
+
+                      return (
+                        <ListingCard
+                          key={listing.id}
+                          listing={listing}
+                          detailHref={detailHref}
+                          ownershipCost={estimate3YearOwnershipCost(
+                            {
+                              make: listing.make,
+                              year: listing.year ?? undefined,
+                              bodyType: listing.bodyType ?? undefined,
+                              powertrain: listing.powertrain ?? undefined,
+                              engine: listing.engine ?? undefined,
+                              price: listing.price,
+                              mileageKm: listing.mileageKm ?? undefined,
+                            },
+                            { ...financeOptions, annualKm, insuranceCoverType },
+                          )}
+                        />
+                      );
+                    })}
+                  </AnimatedList>
+                )}
+              </div>
+
+              <Pagination current={current} page={resolvedPage} pageCount={pageCount} />
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
