@@ -75,6 +75,17 @@ export function OwnershipBreakdown({
   const rucRate =
     RUC_PER_1000KM[(powertrain as keyof typeof RUC_PER_1000KM) ?? "petrol"] ??
     0;
+  // Only names what's actually relevant to this listing — a petrol car
+  // (which pays $0 RUC, see constants.ts) has no business being labeled
+  // "... + road user charges" the way a diesel/EV/PHEV genuinely is, and a
+  // non-PHEV never burns both fuel and electricity.
+  const fuelCostParts = [
+    ...(consumption.litresPer100Km ? ["fuel"] : []),
+    ...(consumption.kwhPer100Km ? ["electricity"] : []),
+  ];
+  const fuelCostBase = fuelCostParts.join(" + ");
+  const fuelLabelLower = rucRate > 0 ? `${fuelCostBase} + road user charges` : `${fuelCostBase} costs`;
+  const fuelLabel = fuelLabelLower.charAt(0).toUpperCase() + fuelLabelLower.slice(1);
   const depositAmount = deposit ?? price * DEFAULT_DEPOSIT_FRACTION;
   const depositLabel =
     deposit !== undefined
@@ -183,7 +194,7 @@ export function OwnershipBreakdown({
           },
         ]),
     {
-      label: "Fuel / electricity + road user charges",
+      label: fuelLabel,
       amount: breakdown.fuelAndRuc,
       explanation: (() => {
         const consumptionText = consumption.kwhPer100Km
