@@ -150,8 +150,27 @@ const EXPANSION_DEALER_SEED_2 = [
   { name: "4E Japan Direct", url: "https://www.4ejapandirect.co.nz", region: "Sydenham, Christchurch", type: "independent", platform: "motorcentral", robotsAllowed: true },
 ];
 
+// Found via Motorcentral's own dealer-website portfolio page plus one web
+// search hit, individually re-confirmed (not just taken on the portfolio
+// listing's word): each site's /vehicles returns real .vehicle cards linking
+// to /vehicle/{slug}/{id}, and robots.txt never blanket-disallows
+// User-agent: *.
+const EXPANSION_DEALER_SEED_3 = [
+  { name: "O'Reilly's Garage", url: "https://www.oreillysgarage.co.nz", region: "Unknown", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Planet Cars", url: "https://www.planetcars.co.nz", region: "Auckland", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Sharp Cars", url: "https://www.sharpcars.co.nz", region: "Auckland", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Shore Prestige", url: "https://www.shoreprestige.co.nz", region: "North Shore, Auckland", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "AutoSpot", url: "https://www.autospot.co.nz", region: "Whangarei", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Bay European", url: "https://www.bayeuropean.nz", region: "Napier, Hawke's Bay", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "DJ Auto", url: "https://www.djauto.co.nz", region: "Auckland; Christchurch", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Greymouth Cars", url: "https://www.greymouthcars.co.nz", region: "Greymouth, West Coast", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Integrity Motors", url: "https://www.integritymotors.co.nz", region: "Unknown", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "The Garage", url: "https://www.thegarage.co.nz", region: "Auckland", type: "independent", platform: "motorcentral", robotsAllowed: true },
+  { name: "Waipapa Cars", url: "https://www.waipapacars.co.nz", region: "Waipapa/Kerikeri, Northland", type: "independent", platform: "motorcentral", robotsAllowed: true },
+];
+
 async function seedDealers() {
-  const allDealers = [...DEALER_SEED, ...EXPANSION_DEALER_SEED, ...EXPANSION_DEALER_SEED_2];
+  const allDealers = [...DEALER_SEED, ...EXPANSION_DEALER_SEED, ...EXPANSION_DEALER_SEED_2, ...EXPANSION_DEALER_SEED_3];
   for (const dealer of allDealers) {
     await db
       .insert(dealers)
