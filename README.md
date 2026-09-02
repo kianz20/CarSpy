@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CarValue
 
-## Getting Started
+A used-car deal-finder for the NZ market. It crawls dealer inventory
+nationwide and lets you search/filter/sort listings by what actually
+matters when buying a car — not just asking price, but the full estimated
+**3-year cost of ownership** (finance, fuel/electricity, servicing,
+insurance, repairs, registration & WOF).
 
-First, run the development server:
+Every result carries a visible disclaimer: these are estimates built from
+published NZ reference rates and bracket assumptions (by body type,
+powertrain, age), not professional valuations or financial advice.
+
+## Features
+
+- **Search & filter** dealer listings by body type, powertrain, make,
+  model, transmission, region, price range, mileage, and year
+- **3-year ownership cost estimate** per listing — finance interest, fuel/
+  electricity + road user charges (adjusted for engine size where known),
+  servicing, insurance, repairs, and registration/WOF — with an itemized,
+  expandable breakdown and an adjustable 1–5 year horizon slider
+- **Sort** by total cost, asking price, or mileage, with real pagination
+- **Real listing photos**, scraped per-dealer, falling back to a stock
+  make/model/year photo when unavailable
+- Mileage-bracket average pricing (low/medium/high km) computed from the
+  current search's own results
+
+See [PLAN.md](./PLAN.md) for the full design rationale and build phases.
+
+## Tech stack
+
+- **Next.js** (App Router) + React + TypeScript
+- **Postgres** via [Neon](https://neon.tech), queried with
+  [Drizzle ORM](https://orm.drizzle.team)
+- **Tailwind CSS**
+- A custom crawler (Cheerio-based, no headless browser) with a
+  per-platform adapter for each dealer-site template (Motorcentral,
+  AdTorque Edge, CarUpdater, Turners, 2 Cheap Cars, Armstrong's)
+
+## Getting started
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set up the database
+
+Copy the env template and fill in a real Neon connection string:
+
+```bash
+cp .env.example .env.local
+```
+
+```
+DATABASE_URL=postgres://user:password@ep-xxxx.region.aws.neon.tech/dbname?sslmode=require
+```
+
+An optional `DATABASE_URL_UNPOOLED` (the non-`-pooler` direct connection
+string) can also be set — migrations prefer it when present, but fall back
+to `DATABASE_URL` otherwise, so one variable is enough to get started.
+
+Then run migrations and seed the static taxonomy (body types/powertrains)
+and dealer list:
+
+```bash
+npm run db:migrate
+npm run db:seed
+npm run db:seed:dealers
+```
+
+### 3. Crawl some listings
+
+```bash
+npm run crawl
+```
+
+This fetches every active dealer's current inventory and upserts it into
+the database (safe to re-run — it updates existing listings and marks
+missing ones as delisted rather than duplicating anything).
+
+### 4. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm run start` | Production build/serve |
+| `npm run lint` | Lint |
+| `npm run db:generate` | Generate a Drizzle migration from schema changes |
+| `npm run db:migrate` | Apply migrations |
+| `npm run db:studio` | Open Drizzle Studio |
+| `npm run db:seed` | Seed the body-type/powertrain taxonomy |
+| `npm run db:seed:dealers` | Seed the list of dealers to crawl |
+| `npm run crawl` | Crawl all active dealers |
+| `npm run crawl:backfill-body-type` | Re-check body type for listings that came back unclassified on first crawl |
 
-## Learn More
+## Scheduled crawling
 
-To learn more about Next.js, take a look at the following resources:
+[.github/workflows/crawl.yml](./.github/workflows/crawl.yml) runs `npm run
+crawl` daily via GitHub Actions (free — public repos get unlimited minutes,
+private repos 2,000/month, and a daily crawl here takes a couple of
+minutes). To enable it, add a `DATABASE_URL` repository secret (Settings →
+Secrets and variables → Actions) with your pooled Neon connection string.
+You can also trigger it manually from the Actions tab.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+[render.yaml](./render.yaml) deploys the web app to [Render](https://render.com)'s
+free tier. It intentionally does **not** include the crawler — Render's
+cron job type has no free tier — hence the GitHub Actions workflow above
+instead.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [LICENSE](./LICENSE).
