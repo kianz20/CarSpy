@@ -25,6 +25,7 @@ import {
   BRAKE_INTERVAL_KM_BASE,
   BRAKE_INTERVAL_MULTIPLIER_BY_POWERTRAIN,
   mileageRepairMultiplier,
+  OWNERSHIP_PERIOD_YEARS,
   type OwnershipCostBreakdown,
 } from "@/lib/ownership";
 import { formatCurrency, formatNumber, formatUnitPrice } from "@/lib/format";
@@ -235,8 +236,14 @@ export function OwnershipBreakdown({
           coverType={breakdown.insuranceCoverType}
           searchParams={{
             ...(deposit !== undefined ? { deposit: String(deposit) } : {}),
-            ...(!financeEnabled ? { financeEnabled: "false" } : {}),
+            // Financing defaults to off — only worth round-tripping when
+            // it's actually on (the reverse of this component's old
+            // default, back when finance defaulted to on instead).
+            ...(financeEnabled ? { financeEnabled: "true" } : {}),
             ...(annualKm !== undefined ? { annualKm: String(annualKm) } : {}),
+            ...(breakdown.ownershipYears !== OWNERSHIP_PERIOD_YEARS
+              ? { ownershipYears: String(breakdown.ownershipYears) }
+              : {}),
           }}
         />
       ),

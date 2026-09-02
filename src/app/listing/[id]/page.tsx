@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getListingById } from "@/lib/search/listings";
 import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
+import { OwnershipYearsSlider } from "@/components/ownership-years-slider";
 import { Disclaimer } from "@/components/disclaimer";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
@@ -56,6 +57,13 @@ export default async function ListingDetailPage({
   // search results list computes the same listing's cost.
   const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
+  // Lets a visitor re-run the estimate over a different horizon via the
+  // slider below — clamped to the 1-5 range the slider itself offers, so a
+  // hand-edited URL can't ask for something the UI doesn't represent.
+  const rawOwnershipYears = toNumber(first(query.ownershipYears));
+  const ownershipYears =
+    rawOwnershipYears !== undefined ? Math.min(Math.max(Math.round(rawOwnershipYears), 1), 5) : 3;
+
   const ownershipCost = estimate3YearOwnershipCost(
     {
       make: listing.make,
@@ -66,7 +74,7 @@ export default async function ListingDetailPage({
       price,
       mileageKm: listing.mileageKm ?? undefined,
     },
-    { ...financeOptions, annualKm, insuranceCoverType },
+    { ...financeOptions, annualKm, insuranceCoverType, ownershipYears },
   );
 
   // Forwards every param this page received verbatim (filters, sort, page,
@@ -127,20 +135,31 @@ export default async function ListingDetailPage({
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">How the {ownershipCost.ownershipYears}-year ownership cost is calculated</h2>
-        <OwnershipBreakdown
-          breakdown={ownershipCost}
-          price={price}
-          bodyType={listing.bodyType}
-          powertrain={listing.powertrain}
-          engine={listing.engine}
-          make={listing.make}
-          year={listing.year}
-          mileageKm={listing.mileageKm}
-          deposit={financeEnabled ? deposit : undefined}
-          financeEnabled={financeEnabled}
-          annualKm={annualKm}
-        />
+        <OwnershipYearsSlider years={ownershipYears} />
+
+        <details className="rounded-lg border border-black/10 dark:border-white/15">
+          <summary className="flex cursor-pointer select-none items-baseline justify-between gap-4 px-4 py-3">
+            <span className="text-sm font-semibold">
+              How the {ownershipCost.ownershipYears}-year ownership cost is calculated
+            </span>
+            <span className="text-lg font-bold">{formatCurrency(ownershipCost.total)}</span>
+          </summary>
+          <div className="border-t border-black/10 px-4 pb-4 pt-3 dark:border-white/15">
+            <OwnershipBreakdown
+              breakdown={ownershipCost}
+              price={price}
+              bodyType={listing.bodyType}
+              powertrain={listing.powertrain}
+              engine={listing.engine}
+              make={listing.make}
+              year={listing.year}
+              mileageKm={listing.mileageKm}
+              deposit={financeEnabled ? deposit : undefined}
+              financeEnabled={financeEnabled}
+              annualKm={annualKm}
+            />
+          </div>
+        </details>
       </section>
 
       <Disclaimer />
