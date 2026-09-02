@@ -6,7 +6,7 @@
  */
 export function Disclaimer() {
   return (
-    <p className="flex items-start gap-2 rounded-xl border border-amber-400 bg-amber-100 px-3.5 py-2.5 text-xs font-medium text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/15 dark:text-amber-200">
+    <p className="flex items-start gap-2 rounded-xl border border-amber-400 bg-amber-100 px-3.5 py-2.5 text-xs font-medium text-black dark:border-amber-400/30 dark:bg-amber-400/15 dark:text-amber-200">
       <span aria-hidden="true">⚠️</span>
       <span>
         Estimates only, not professional valuations or financial advice. Mileage-bracket prices reflect only the
