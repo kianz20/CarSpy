@@ -5,6 +5,12 @@
  * ballparks (manufacturer combined-cycle figures skew optimistic vs. real-world
  * use), not per-model figures — Phase 4 doesn't have a per-make/model fuel
  * economy database, so this is a bracket estimate like servicing/insurance/repairs.
+ *
+ * The petrol/diesel bracket is additionally nudged by the listing's own
+ * engine displacement when known (see adjustForEngineSize below) — a body
+ * type alone conflates, say, a base 2.0L SUV with a 3.5L V6 version of the
+ * same body type, and engine size is a real, listing-specific signal we
+ * already scrape rather than another bracket guess.
  */
 
 export type ConsumptionEstimate = {
@@ -26,6 +32,50 @@ const PETROL_DIESEL_BY_BODY_TYPE: Record<string, number> = {
   convertible: 8.5,
 };
 const DEFAULT_PETROL_DIESEL_L_PER_100KM = 8.5;
+
+// The displacement (litres) each body-type bracket above was implicitly
+// calibrated around — i.e. what a "typical" example of that body type has.
+// Used to scale the bracket up/down when the actual listing's engine is
+// bigger/smaller than that, rather than replacing the bracket outright.
+const REFERENCE_ENGINE_LITRES_BY_BODY_TYPE: Record<string, number> = {
+  hatch: 1.6,
+  sedan: 2.0,
+  wagon: 2.0,
+  suv: 2.5,
+  ute: 2.8,
+  van: 2.5,
+  people_mover: 2.4,
+  coupe: 2.0,
+  convertible: 2.0,
+};
+const DEFAULT_REFERENCE_ENGINE_LITRES = 2.0;
+
+// Consumption doesn't scale perfectly linearly with displacement (bigger
+// engines are also often more efficient per litre than older/smaller ones),
+// but linear is a reasonable bracket-level approximation — clamped so a
+// data glitch (e.g. a mis-scraped "12000cc") can't send the estimate wild.
+const MIN_ENGINE_SIZE_MULTIPLIER = 0.7;
+const MAX_ENGINE_SIZE_MULTIPLIER = 1.6;
+
+/** Pulls displacement in litres out of a free-text engine field (e.g.
+ * "1998cc", "1991cc/155kW") — same source data as format.ts's formatEngine,
+ * but returning a number for use in the multiplier below rather than a
+ * display string. Fields with no "cc" figure at all (e.g. some EV listings
+ * just record power, "180kW") correctly yield undefined — nothing to adjust. */
+function parseEngineLitres(engine: string | undefined): number | undefined {
+  const match = engine?.match(/(\d+)\s*cc/i);
+  if (!match) return undefined;
+  return Number(match[1]) / 1000;
+}
+
+function engineSizeMultiplier(bodyType: string | undefined, engine: string | undefined): number {
+  const actualLitres = parseEngineLitres(engine);
+  if (actualLitres === undefined) return 1;
+
+  const referenceLitres = (bodyType ? REFERENCE_ENGINE_LITRES_BY_BODY_TYPE[bodyType] : undefined) ?? DEFAULT_REFERENCE_ENGINE_LITRES;
+  const rawMultiplier = actualLitres / referenceLitres;
+  return Math.min(Math.max(rawMultiplier, MIN_ENGINE_SIZE_MULTIPLIER), MAX_ENGINE_SIZE_MULTIPLIER);
+}
 
 // Hybrids roughly halve petrol consumption vs. their equivalent ICE body type.
 const HYBRID_MULTIPLIER = 0.55;
@@ -50,8 +100,16 @@ const DEFAULT_EV_KWH_PER_100KM = 18;
 const PHEV_L_PER_100KM = 2.5;
 const PHEV_KWH_PER_100KM = 12;
 
-export function estimateConsumption(bodyType: string | undefined, powertrain: string | undefined): ConsumptionEstimate {
-  const baseIce = (bodyType ? PETROL_DIESEL_BY_BODY_TYPE[bodyType] : undefined) ?? DEFAULT_PETROL_DIESEL_L_PER_100KM;
+export function estimateConsumption(
+  bodyType: string | undefined,
+  powertrain: string | undefined,
+  engine?: string,
+): ConsumptionEstimate {
+  // Engine size only tells you anything about an ICE's petrol/diesel burn —
+  // not applied to EV kWh/100km (no combustion engine) or PHEV's fixed small
+  // backup-engine figure (dominated by how much it's actually driven on
+  // battery vs. engine, not the engine's own displacement).
+  const baseIce = ((bodyType ? PETROL_DIESEL_BY_BODY_TYPE[bodyType] : undefined) ?? DEFAULT_PETROL_DIESEL_L_PER_100KM) * engineSizeMultiplier(bodyType, engine);
 
   switch (powertrain) {
     case "ev":

@@ -14,6 +14,7 @@ export type ListingCardData = {
   transmission: string | null;
   bodyType: string | null;
   powertrain: string | null;
+  engine: string | null;
   mileageKm: number | null;
   importStatus: string | null;
   price: number;

@@ -174,6 +174,7 @@ export async function searchListings(
           year: row.listings.year ?? undefined,
           bodyType: row.listings.bodyType ?? undefined,
           powertrain: row.listings.powertrain ?? undefined,
+          engine: row.listings.engine ?? undefined,
           price,
           mileageKm: row.listings.mileageKm ?? undefined,
         },

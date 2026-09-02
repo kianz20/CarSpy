@@ -27,7 +27,7 @@ import {
   mileageRepairMultiplier,
   type OwnershipCostBreakdown,
 } from "@/lib/ownership";
-import { formatCurrency, formatNumber, formatUnitPrice } from "@/lib/format";
+import { formatCurrency, formatEngine, formatNumber, formatUnitPrice } from "@/lib/format";
 import { InsuranceCoverToggle } from "@/components/insurance-cover-toggle";
 
 /**
@@ -41,6 +41,7 @@ export function OwnershipBreakdown({
   price,
   bodyType,
   powertrain,
+  engine,
   make,
   year,
   mileageKm,
@@ -52,6 +53,7 @@ export function OwnershipBreakdown({
   price: number;
   bodyType: string | null;
   powertrain: string | null;
+  engine?: string | null;
   make: string;
   year: number | null;
   mileageKm?: number | null;
@@ -67,6 +69,7 @@ export function OwnershipBreakdown({
   const consumption = estimateConsumption(
     bodyType ?? undefined,
     powertrain ?? undefined,
+    engine ?? undefined,
   );
   const rucRate =
     RUC_PER_1000KM[(powertrain as keyof typeof RUC_PER_1000KM) ?? "petrol"] ??
@@ -184,12 +187,18 @@ export function OwnershipBreakdown({
       explanation: (() => {
         const consumptionText = consumption.kwhPer100Km
           ? `${consumption.kwhPer100Km} kWh/100km at ${formatUnitPrice(ELECTRICITY_PRICE_PER_KWH)}/kWh`
-          : `${consumption.litresPer100Km} L/100km at ${formatUnitPrice(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
+          : `${consumption.litresPer100Km?.toFixed(1)} L/100km at ${formatUnitPrice(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
         const rucText =
           rucRate > 0
             ? `, plus Road User Charges at ${formatCurrency(rucRate)} per 1,000km`
             : " (no RUC — petrol/hybrid pay via fuel excise instead)";
-        return `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${breakdown.ownershipYears} years) at an estimated ${consumptionText} for this body type/powertrain${rucText}.`;
+        // Only claim the adjustment when the engine field actually parsed to
+        // a displacement (see consumption.ts's parseEngineLitres) — some
+        // listings' engine text has no "cc" figure at all (e.g. just power,
+        // "180kW"), where no adjustment was actually applied.
+        const engineText =
+          !consumption.kwhPer100Km && engine && /\d+\s*cc/i.test(engine) ? `, adjusted for its ${formatEngine(engine)} engine` : "";
+        return `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${breakdown.ownershipYears} years) at an estimated ${consumptionText} for this body type/powertrain${engineText}${rucText}.`;
       })(),
     },
     {

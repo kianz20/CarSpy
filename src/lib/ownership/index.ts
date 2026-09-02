@@ -11,6 +11,9 @@ export type OwnershipCostInput = {
   year?: number;
   bodyType?: string;
   powertrain?: string;
+  /** Free-text engine displacement (e.g. "1998cc") — refines the body-type
+   * fuel-consumption bracket when known. See consumption.ts. */
+  engine?: string;
   price: number;
   /** Current odometer reading — used to flag above/below-average wear for the
    * vehicle's age in the repairs estimate. Omit if unknown. */
@@ -62,7 +65,7 @@ export function estimate3YearOwnershipCost(
   const totalKm = annualKm * ownershipYears;
 
   const { interestPaid, loanAmount } = estimateFinanceCost(listing.price, ownershipYears * 12, options);
-  const { total: fuelAndRuc } = estimateFuelCost(listing.bodyType, listing.powertrain, totalKm);
+  const { total: fuelAndRuc } = estimateFuelCost(listing.bodyType, listing.powertrain, totalKm, listing.engine);
   const servicingItems = estimateServicingCost(listing.powertrain, listing.bodyType, annualKm, ownershipYears);
   const insuranceCoverType = options.insuranceCoverType ?? "comprehensive";
   const insurance = estimateAnnualInsurancePremium(listing.price, insuranceCoverType) * ownershipYears;

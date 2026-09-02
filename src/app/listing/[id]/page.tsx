@@ -62,6 +62,7 @@ export default async function ListingDetailPage({
       year: listing.year ?? undefined,
       bodyType: listing.bodyType ?? undefined,
       powertrain: listing.powertrain ?? undefined,
+      engine: listing.engine ?? undefined,
       price,
       mileageKm: listing.mileageKm ?? undefined,
     },
@@ -132,6 +133,7 @@ export default async function ListingDetailPage({
           price={price}
           bodyType={listing.bodyType}
           powertrain={listing.powertrain}
+          engine={listing.engine}
           make={listing.make}
           year={listing.year}
           mileageKm={listing.mileageKm}
