@@ -45,7 +45,7 @@ export function OwnershipBreakdown({
   year,
   mileageKm,
   deposit,
-  financeEnabled = true,
+  financeEnabled = false,
   annualKm,
 }: {
   breakdown: OwnershipCostBreakdown;

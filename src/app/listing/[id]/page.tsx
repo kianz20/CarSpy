@@ -46,10 +46,10 @@ export default async function ListingDetailPage({
   const queryInsuranceCoverType = first(query.insuranceCoverType);
   const insuranceCoverType: InsuranceCoverType | undefined =
     queryInsuranceCoverType === "third_party_fire_theft" || queryInsuranceCoverType === "none" ? queryInsuranceCoverType : undefined;
-  // See search-form.tsx's hidden-fallback comment — absence here (an old
-  // link predating this field, say) defaults to finance on, matching prior
-  // behavior; explicit "false" is the only way to turn it off.
-  const financeEnabled = first(query.financeEnabled) !== "false";
+  // Financing defaults to off — see search-form.tsx's hidden-fallback
+  // comment for why absence here (an old link predating this field, say)
+  // reads the same as an explicit "false".
+  const financeEnabled = first(query.financeEnabled) === "true";
 
   // Finance off means no loan is modeled at all — depositFraction: 1 forces
   // loanAmount (and so financeInterest) to $0, consistent with how the

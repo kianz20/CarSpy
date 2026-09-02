@@ -82,10 +82,10 @@ export function SearchForm({
   // no loan, so nothing to put a deposit toward. Resynced from `current`
   // alongside hasFilters above (same render-time-reset rationale).
   const [financeEnabled, setFinanceEnabled] = useState(
-    current.financeEnabled !== "false",
+    current.financeEnabled === "true",
   );
   if (formKey !== prevFormKey) {
-    setFinanceEnabled(current.financeEnabled !== "false");
+    setFinanceEnabled(current.financeEnabled === "true");
   }
 
   function handleFormChange(event: FormEvent<HTMLFormElement>) {
@@ -320,15 +320,11 @@ export function SearchForm({
 
         <hr className="col-span-full border-black/10 dark:border-white/15" />
 
-        <Field
-          label="How many km do you drive per year?"
-          hint="Defaults to 12,000km/yr"
-          className="col-span-2"
-        >
+        <Field label="How many km do you drive per year?" className="col-span-2">
           <input
             type="number"
             name="annualKm"
-            defaultValue={current.annualKm ?? ""}
+            defaultValue={current.annualKm ?? "12000"}
             min={0}
             step={1000}
             className={inputClass}
@@ -343,7 +339,7 @@ export function SearchForm({
               type="checkbox"
               name="financeEnabled"
               value="true"
-              defaultChecked={current.financeEnabled !== "false"}
+              defaultChecked={current.financeEnabled === "true"}
               className="h-4 w-4 rounded border-black/20 dark:border-white/20"
             />
             <span className="text-sm font-normal text-zinc-700 dark:text-zinc-300">

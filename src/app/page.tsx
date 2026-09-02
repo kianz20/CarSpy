@@ -68,14 +68,13 @@ export default async function Home({
     current.insuranceCoverType === "none"
       ? current.insuranceCoverType
       : undefined;
-  // Checkbox absence can't distinguish "never touched" from "explicitly
-  // unchecked" on its own — the search form pairs it with a hidden fallback
-  // input so an explicit uncheck always round-trips as the literal "false".
-  // Its presence is also what distinguishes "the user actually submitted a
-  // search" from a bare first visit to "/" — deposit alone can't do that
-  // anymore since the search form only requires/renders it when finance is
-  // enabled, so skip the (real, DB-hitting) search entirely until then.
-  const financeEnabled = current.financeEnabled !== "false";
+  // Financing defaults to off — the search form's checkbox pairs it with a
+  // hidden fallback input so a submission always round-trips an explicit
+  // "true" or "false" (a checkbox that's merely absent from the form data
+  // can't be told apart from "never touched"). That presence is also what
+  // distinguishes "the user actually submitted a search" from a bare first
+  // visit to "/", so it still gates the real, DB-hitting search below.
+  const financeEnabled = current.financeEnabled === "true";
   const hasSearched = current.financeEnabled !== undefined;
   const sort: ListingSort =
     current.sort === "price" || current.sort === "mileage" ? current.sort : "total";
