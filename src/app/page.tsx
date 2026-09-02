@@ -186,18 +186,13 @@ export default async function Home({
               </p>
             ) : (
               listingsData.map((listing) => {
-                const detailParams = new URLSearchParams();
-                if (current.deposit)
-                  detailParams.set("deposit", current.deposit);
-                if (current.financeEnabled)
-                  detailParams.set("financeEnabled", current.financeEnabled);
-                if (current.annualKm)
-                  detailParams.set("annualKm", current.annualKm);
-                if (current.insuranceCoverType)
-                  detailParams.set(
-                    "insuranceCoverType",
-                    current.insuranceCoverType,
-                  );
+                // Carries every current filter/sort/finance param (not just
+                // the finance ones) so the detail page's "Back to search"
+                // link can return to the exact search, not just restore the
+                // ownership-cost inputs — a plain Link isn't real browser
+                // history, so it has to reconstruct the full URL itself.
+                const detailParams = new URLSearchParams(current);
+                if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
                 const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
 
                 return (

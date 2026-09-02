@@ -68,15 +68,15 @@ export default async function ListingDetailPage({
     { ...financeOptions, annualKm, insuranceCoverType },
   );
 
-  // Only round-trips deposit/financeEnabled/annualKm/insuranceCoverType (the
-  // only params this page receives) — the browser's own back button is what
-  // actually restores the full set of search filters, since this is a plain
-  // link, not a reconstruction of them.
+  // Forwards every param this page received verbatim (filters, sort, page,
+  // and the finance ones) — page.tsx's detailHref is what put them there in
+  // the first place, so replaying them all is what gets this plain Link
+  // back to the exact search, not just the ownership-cost inputs.
   const backParams = new URLSearchParams();
-  if (deposit !== undefined) backParams.set("deposit", String(deposit));
-  if (!financeEnabled) backParams.set("financeEnabled", "false");
-  if (annualKm !== undefined) backParams.set("annualKm", String(annualKm));
-  if (insuranceCoverType) backParams.set("insuranceCoverType", insuranceCoverType);
+  for (const [key, value] of Object.entries(query)) {
+    const v = first(value);
+    if (v) backParams.set(key, v);
+  }
   const backHref = `/${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
 
   return (
