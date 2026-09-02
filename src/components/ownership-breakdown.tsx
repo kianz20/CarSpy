@@ -27,7 +27,7 @@ import {
   mileageRepairMultiplier,
   type OwnershipCostBreakdown,
 } from "@/lib/ownership";
-import { formatCurrency, formatEngine, formatNumber, formatUnitPrice } from "@/lib/format";
+import { formatCurrency, formatNumber, formatUnitPrice } from "@/lib/format";
 import { InsuranceCoverToggle } from "@/components/insurance-cover-toggle";
 
 /**
@@ -166,7 +166,7 @@ export function OwnershipBreakdown({
   const rows: {
     label: string;
     amount: number;
-    explanation: string;
+    explanation: React.ReactNode;
     subItems?: { label: string; amount: number; explanation: string }[];
     headerExtra?: React.ReactNode;
   }[] = [
@@ -188,17 +188,26 @@ export function OwnershipBreakdown({
         const consumptionText = consumption.kwhPer100Km
           ? `${consumption.kwhPer100Km} kWh/100km at ${formatUnitPrice(ELECTRICITY_PRICE_PER_KWH)}/kWh`
           : `${consumption.litresPer100Km?.toFixed(1)} L/100km at ${formatUnitPrice(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
-        const rucText =
-          rucRate > 0
-            ? `, plus Road User Charges at ${formatCurrency(rucRate)} per 1,000km`
-            : " (no RUC — petrol/hybrid pay via fuel excise instead)";
         // Only claim the adjustment when the engine field actually parsed to
         // a displacement (see consumption.ts's parseEngineLitres) — some
         // listings' engine text has no "cc" figure at all (e.g. just power,
         // "180kW"), where no adjustment was actually applied.
-        const engineText =
-          !consumption.kwhPer100Km && engine && /\d+\s*cc/i.test(engine) ? `, adjusted for its ${formatEngine(engine)} engine` : "";
-        return `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${breakdown.ownershipYears} years) at an estimated ${consumptionText} for this body type/powertrain${engineText}${rucText}.`;
+        const engineMatch = !consumption.kwhPer100Km ? engine?.match(/(\d+)\s*cc/i) : undefined;
+        const bullets = [
+          `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${breakdown.ownershipYears} years)`,
+          `Estimated at ${consumptionText} for this body type/powertrain`,
+          ...(engineMatch ? [`Adjusted for its ${(Number(engineMatch[1]) / 1000).toFixed(1)}L engine`] : []),
+          // Petrol/hybrid pay for road funding via fuel excise at the pump
+          // instead — worth a bullet only when RUC actually applies here.
+          ...(rucRate > 0 ? [`Plus Road User Charges at ${formatCurrency(rucRate)} per 1,000km`] : []),
+        ];
+        return (
+          <ul className="list-disc space-y-0.5 pl-4">
+            {bullets.map((bullet) => (
+              <li key={bullet}>{bullet}</li>
+            ))}
+          </ul>
+        );
       })(),
     },
     {
@@ -253,9 +262,9 @@ export function OwnershipBreakdown({
             </span>
           </div>
           {row.headerExtra && <div className="mt-2">{row.headerExtra}</div>}
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             {row.explanation}
-          </p>
+          </div>
           {row.subItems && (
             <div className="mt-2 flex flex-col gap-2 border-t border-black/5 pt-2 dark:border-white/10">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
