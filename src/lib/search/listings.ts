@@ -41,10 +41,21 @@ export type TotalCostSortOptions = {
 
 // A search with no filters at all matches every active listing (~9,000+ and
 // growing) — rendering that in one page took 50+ seconds and looked like the
-// site had hung. Capped instead of paginated for now (v1 simplicity); real
-// pagination is a natural follow-up once result sets need browsing past the
-// cap rather than narrowing.
-const RESULTS_LIMIT = 60;
+// site had hung, hence pagination rather than one giant result set.
+export const PAGE_SIZE = 60;
+
+// Hard cap on how deep pagination goes. Not just a nicety — for sort
+// "total" (see below), how far a page reaches directly sets how many rows
+// get fetched and costed, so an unbounded page number would make a single
+// request arbitrarily expensive. 50 pages (3,000 listings deep) is already
+// far past what anyone will click through in a "browse and compare" UI.
+const MAX_PAGE = 50;
+
+// See runSearchQuery's "total" branch — how many cheapest-by-price rows get
+// costed and re-sorted in JS to find the cheapest-by-total page. Scales with
+// how deep the requested page is (still a fixed multiple of PAGE_SIZE per
+// page), not a flat constant, so later pages stay correctly ordered too.
+const TOTAL_SORT_CANDIDATE_MULTIPLIER = 10;
 
 /** Dealer.region is free text (see src/lib/regions.ts) — a dealer whose raw
  * value is e.g. "Wigram, Christchurch" or "Panmure, Auckland; Wigram,
@@ -96,51 +107,65 @@ type SearchRow = Awaited<ReturnType<typeof runSearchQuery>>[number];
 export type ListingSearchResult = {
   rows: SearchRow[];
   totalCount: number;
-  limited: boolean;
+  page: number;
+  pageCount: number;
 };
 
-async function runSearchQuery(conditions: Awaited<ReturnType<typeof buildConditions>>, sort: ListingSort) {
+async function runSearchQuery(conditions: Awaited<ReturnType<typeof buildConditions>>, sort: ListingSort, page: number) {
   const query = db
     .select()
     .from(listings)
     .innerJoin(dealers, eq(listings.dealerId, dealers.id))
     .where(conditions);
 
+  const offset = (page - 1) * PAGE_SIZE;
+
   if (sort === "mileage") {
     // Nulls last — a listing with unknown mileage shouldn't rank as "0km".
-    return query.orderBy(sql`${listings.mileageKm} is null`, asc(listings.mileageKm)).limit(RESULTS_LIMIT);
+    return query.orderBy(sql`${listings.mileageKm} is null`, asc(listings.mileageKm)).limit(PAGE_SIZE).offset(offset);
   }
   if (sort === "price") {
-    return query.orderBy(asc(listings.price)).limit(RESULTS_LIMIT);
+    return query.orderBy(asc(listings.price)).limit(PAGE_SIZE).offset(offset);
   }
 
   // "total" (asking + 3-year ownership cost) can't be pushed down to SQL —
   // it depends on the same bracket-estimate math as the displayed ownership
   // breakdown (finance/fuel/servicing/insurance/repairs by body type,
-  // powertrain, age, etc). Fetch every matching row (already scanned once
-  // for the count query below, so this isn't a new class of cost) and sort
-  // in JS, since ordering has to happen before the RESULTS_LIMIT cut — the
-  // cheapest-by-price top 60 isn't necessarily the cheapest-by-total 60.
-  return query.orderBy(asc(listings.price));
+  // powertrain, age, etc), so it's computed and sorted in JS instead.
+  //
+  // Fetching and costing *every* matching row was a real cost, not just a
+  // theoretical one — on an unfiltered search (~9,000 listings) it made the
+  // page take 2+ seconds. Ownership cost overhead scales with price too
+  // (finance interest, insurance), so total-cost order tracks price order
+  // closely; fetching a generous multiple of what's needed *up to and
+  // including the requested page* keeps the true cheapest-by-total results
+  // in the candidate set in practice, without costing the entire table on
+  // every request.
+  return query.orderBy(asc(listings.price)).limit(page * PAGE_SIZE * TOTAL_SORT_CANDIDATE_MULTIPLIER);
 }
 
 export async function searchListings(
   filters: ListingSearchFilters,
   sort: ListingSort = "total",
   totalCostOptions: TotalCostSortOptions = {},
+  page: number = 1,
 ): Promise<ListingSearchResult> {
+  const clampedPage = Math.min(Math.max(Math.trunc(page) || 1, 1), MAX_PAGE);
   const conditions = await buildConditions(filters);
 
-  const [allRows, [{ totalCount }]] = await Promise.all([
-    runSearchQuery(conditions, sort),
+  const [rawRows, [{ totalCount }]] = await Promise.all([
+    runSearchQuery(conditions, sort, clampedPage),
     db.select({ totalCount: count() }).from(listings).innerJoin(dealers, eq(listings.dealerId, dealers.id)).where(conditions),
   ]);
 
+  const pageCount = Math.min(Math.max(Math.ceil(totalCount / PAGE_SIZE), 1), MAX_PAGE);
+
   if (sort !== "total") {
-    return { rows: allRows, totalCount, limited: totalCount > allRows.length };
+    return { rows: rawRows, totalCount, page: clampedPage, pageCount };
   }
 
-  const ranked = allRows
+  const offset = (clampedPage - 1) * PAGE_SIZE;
+  const ranked = rawRows
     .map((row) => {
       const price = parseFloat(row.listings.price);
       const ownershipTotal = estimate3YearOwnershipCost(
@@ -157,10 +182,10 @@ export async function searchListings(
       return { row, totalCost: price + ownershipTotal };
     })
     .sort((a, b) => a.totalCost - b.totalCost)
-    .slice(0, RESULTS_LIMIT)
+    .slice(offset, offset + PAGE_SIZE)
     .map(({ row }) => row);
 
-  return { rows: ranked, totalCount, limited: totalCount > ranked.length };
+  return { rows: ranked, totalCount, page: clampedPage, pageCount };
 }
 
 /**

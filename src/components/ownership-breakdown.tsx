@@ -27,7 +27,7 @@ import {
   mileageRepairMultiplier,
   type OwnershipCostBreakdown,
 } from "@/lib/ownership";
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { formatCurrency, formatNumber, formatUnitPrice } from "@/lib/format";
 import { InsuranceCoverToggle } from "@/components/insurance-cover-toggle";
 
 /**
@@ -183,8 +183,8 @@ export function OwnershipBreakdown({
       amount: breakdown.fuelAndRuc,
       explanation: (() => {
         const consumptionText = consumption.kwhPer100Km
-          ? `${consumption.kwhPer100Km} kWh/100km at ${formatCurrency(ELECTRICITY_PRICE_PER_KWH)}/kWh`
-          : `${consumption.litresPer100Km} L/100km at ${formatCurrency(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
+          ? `${consumption.kwhPer100Km} kWh/100km at ${formatUnitPrice(ELECTRICITY_PRICE_PER_KWH)}/kWh`
+          : `${consumption.litresPer100Km} L/100km at ${formatUnitPrice(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
         const rucText =
           rucRate > 0
             ? `, plus Road User Charges at ${formatCurrency(rucRate)} per 1,000km`

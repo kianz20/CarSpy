@@ -15,6 +15,7 @@ import {
 import { SearchForm } from "@/components/search-form";
 import { MileageStatsBar } from "@/components/mileage-stats-bar";
 import { SortSelect } from "@/components/sort-select";
+import { Pagination } from "@/components/pagination";
 import { ListingCard, type ListingCardData } from "@/components/listing-card";
 import { Disclaimer } from "@/components/disclaimer";
 
@@ -78,6 +79,7 @@ export default async function Home({
   const hasSearched = current.financeEnabled !== undefined;
   const sort: ListingSort =
     current.sort === "price" || current.sort === "mileage" ? current.sort : "total";
+  const page = toNumber(first(params.page)) ?? 1;
 
   const filters: ListingSearchFilters = {
     bodyType: current.bodyType,
@@ -108,16 +110,18 @@ export default async function Home({
 
   let listingsData: ListingCardData[] = [];
   let totalCount = 0;
-  let limited = false;
+  let resolvedPage = page;
+  let pageCount = 1;
   let mileageStats: MileageBracketStat[] = [];
 
   if (hasSearched) {
     const [searchResult, stats] = await Promise.all([
-      searchListings(filters, sort, { ...financeOptions, annualKm, insuranceCoverType }),
+      searchListings(filters, sort, { ...financeOptions, annualKm, insuranceCoverType }, page),
       getMileageBracketStats(filters),
     ]);
     totalCount = searchResult.totalCount;
-    limited = searchResult.limited;
+    resolvedPage = searchResult.page;
+    pageCount = searchResult.pageCount;
     mileageStats = stats;
     listingsData = searchResult.rows.map((row) => ({
       id: row.listings.id,
@@ -167,18 +171,12 @@ export default async function Home({
           {totalCount > 0 && <MileageStatsBar stats={mileageStats} />}
 
           {listingsData.length > 0 && (
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                {totalCount.toLocaleString()} matching listing{totalCount === 1 ? "" : "s"}
+              </p>
               <SortSelect current={sort} />
             </div>
-          )}
-
-          {limited && (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Showing the {sort === "mileage" ? "lowest-mileage" : "cheapest"}{" "}
-              {listingsData.length} of {totalCount.toLocaleString()} matching
-              listings — narrow your search (body type, make, price, mileage)
-              to see others.
-            </p>
           )}
 
           <div className="flex flex-col gap-3">
@@ -223,6 +221,8 @@ export default async function Home({
               })
             )}
           </div>
+
+          <Pagination current={current} page={resolvedPage} pageCount={pageCount} />
         </>
       )}
     </div>

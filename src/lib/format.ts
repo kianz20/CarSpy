@@ -8,6 +8,21 @@ export function formatCurrency(amount: number): string {
   return currencyFormatter.format(amount);
 }
 
+// Per-unit prices (fuel/electricity rates) are sub-dollar or have meaningful
+// cents ($0.40/kWh, $3.16/L) — formatCurrency's 0-decimal rounding would
+// show $0 or drop the cents entirely, which is wrong, not just imprecise,
+// for a unit price this small.
+const unitPriceFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "currency",
+  currency: "NZD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatUnitPrice(amount: number): string {
+  return unitPriceFormatter.format(amount);
+}
+
 const numberFormatter = new Intl.NumberFormat("en-NZ");
 
 export function formatNumber(n: number): string {

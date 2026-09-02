@@ -20,6 +20,9 @@ export function SortSelect({ current }: { current: string }) {
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sort", event.target.value);
+    // A different order can put page 5 past the end of the results (or just
+    // show confusingly different listings there) — back to page 1.
+    params.delete("page");
     router.push(`/?${params.toString()}`);
   }
 

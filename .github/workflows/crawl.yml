@@ -1,0 +1,31 @@
+name: Crawl dealer listings
+
+on:
+  schedule:
+    # Runs daily at 15:00 UTC (03:00 NZST / 04:00 NZDT) — overnight NZ time,
+    # so a crawl in progress doesn't overlap with peak daytime site traffic.
+    # GitHub Actions cron uses UTC only; adjust here if you want a different
+    # local time.
+    - cron: "0 15 * * *"
+  # Lets you trigger a crawl on demand from the Actions tab, without waiting
+  # for the schedule — useful right after an adapter change.
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run crawl
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run crawl
