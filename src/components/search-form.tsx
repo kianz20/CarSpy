@@ -331,25 +331,6 @@ export function SearchForm({
           <input type="hidden" name="financeEnabled" value="false" />
         </Field>
 
-        <Field label="Motorcycles & scooters" className="col-span-2">
-          <div className="flex min-h-[30px] items-center gap-2">
-            <input
-              type="checkbox"
-              name="includeMotorcycles"
-              value="true"
-              defaultChecked={current.includeMotorcycles === "true"}
-              className="h-4 w-4 rounded border-border accent-accent"
-            />
-            <span className="text-sm font-normal text-foreground/80">
-              Include motorbikes &amp; scooters in results
-            </span>
-          </div>
-          {/* Same checked/hidden-fallback pairing as financeEnabled above —
-              an unchecked checkbox submits nothing, so this distinguishes
-              "explicitly off" from "never touched". */}
-          <input type="hidden" name="includeMotorcycles" value="false" />
-        </Field>
-
         {financeEnabled && (
           <Field
             label="Deposit ($)"
@@ -372,6 +353,25 @@ export function SearchForm({
             />
           </Field>
         )}
+
+        <Field label="Motorcycles & scooters" className="col-span-2">
+          <div className="flex min-h-[30px] items-center gap-2">
+            <input
+              type="checkbox"
+              name="includeMotorcycles"
+              value="true"
+              defaultChecked={current.includeMotorcycles === "true"}
+              className="h-4 w-4 rounded border-border accent-accent"
+            />
+            <span className="text-sm font-normal text-foreground/80">
+              Include motorbikes &amp; scooters in results
+            </span>
+          </div>
+          {/* Same checked/hidden-fallback pairing as financeEnabled above —
+              an unchecked checkbox submits nothing, so this distinguishes
+              "explicitly off" from "never touched". */}
+          <input type="hidden" name="includeMotorcycles" value="false" />
+        </Field>
         </div>
 
         {/* Sort lives in its own control above the results (see SortSelect),

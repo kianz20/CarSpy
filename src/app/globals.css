@@ -20,6 +20,11 @@
   --accent-2: #22d3ee;
   --accent-foreground: #ffffff;
 
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #0284c7;
+
   --shadow-color: 240 30% 10%;
 }
 
@@ -30,10 +35,17 @@
     --surface-2: #1a1a2a;
     --foreground: #f2f2fa;
     --muted: #9a9ab0;
-    --border: rgba(255, 255, 255, 0.09);
+    --border: rgba(36, 36, 36, 1);
 
     --accent: #8b7bff;
     --accent-2: #4fe0f5;
+
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #38bdf8;
+
+    --shadow-color: 240 29% 10%;
   }
 }
 
@@ -43,9 +55,16 @@
   --surface-2: #1a1a2a;
   --foreground: #f2f2fa;
   --muted: #9a9ab0;
-  --border: rgba(255, 255, 255, 0.09);
+  --border: rgba(36, 36, 36, 1);
   --accent: #8b7bff;
   --accent-2: #4fe0f5;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
+
+  --shadow-color: 240 29% 10%;
 }
 
 @theme inline {
@@ -58,6 +77,10 @@
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
   --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
