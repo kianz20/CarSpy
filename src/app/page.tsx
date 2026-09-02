@@ -18,9 +18,9 @@ import { SortSelect } from "@/components/sort-select";
 import { Pagination } from "@/components/pagination";
 import { ListingCard, type ListingCardData } from "@/components/listing-card";
 import { AnimatedList } from "@/components/animated-list";
-import { Disclaimer } from "@/components/disclaimer";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getWatchlistedListingIds } from "@/lib/watchlist";
+import { parseListParam } from "@/lib/listParams";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -85,12 +85,12 @@ export default async function Home({
   const page = toNumber(first(params.page)) ?? 1;
 
   const filters: ListingSearchFilters = {
-    bodyType: current.bodyType,
-    powertrain: current.powertrain,
-    make: current.make,
-    model: current.model,
-    transmission: current.transmission,
-    region: current.region,
+    bodyType: parseListParam(current.bodyType),
+    powertrain: parseListParam(current.powertrain),
+    make: parseListParam(current.make),
+    model: parseListParam(current.model),
+    transmission: parseListParam(current.transmission),
+    region: parseListParam(current.region),
     minPrice: toNumber(current.minPrice),
     maxPrice: toNumber(current.maxPrice),
     maxMileageKm: toNumber(current.maxMileageKm),
@@ -162,9 +162,12 @@ export default async function Home({
         </p>
       </header>
 
-      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:items-start lg:gap-8">
-        <aside className="mb-6 lg:sticky lg:top-20 lg:mb-0">
-          <div className="card p-4 sm:p-5">
+      {!hasSearched ? (
+        // Before the first search, the filter form is the whole point of the
+        // page — give it the width a cramped 320px sidebar can't, instead of
+        // burying it next to an empty results area.
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="card p-6 sm:p-8">
             <SearchForm
               bodyTypes={bodyTypes}
               powertrains={powertrains}
@@ -173,81 +176,93 @@ export default async function Home({
               current={current}
             />
           </div>
-        </aside>
-
-        <main className="flex min-w-0 flex-col gap-6">
-          <Disclaimer />
-
-          {!hasSearched ? (
-            <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
-              <div className="text-3xl">🔍</div>
-              <p className="text-sm font-medium">Set your filters, then hit Search</p>
-              <p className="text-xs text-muted">Matching listings will show up right here.</p>
+        </div>
+      ) : (
+        <div className="lg:grid lg:grid-cols-[320px_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8 xl:grid-cols-[320px_1fr_260px]">
+          <aside className="mb-6 lg:sticky lg:top-20 lg:col-start-1 lg:row-start-2 lg:mb-0">
+            <div className="card p-4 sm:p-5">
+              <SearchForm
+                bodyTypes={bodyTypes}
+                powertrains={powertrains}
+                makes={makes}
+                regions={regions}
+                current={current}
+              />
             </div>
-          ) : (
-            <>
-              {totalCount > 0 && <MileageStatsBar stats={mileageStats} />}
+          </aside>
 
-              {listingsData.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-muted">
-                    <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
-                    matching listing{totalCount === 1 ? "" : "s"}
-                  </p>
-                  <SortSelect current={sort} />
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                {listingsData.length === 0 ? (
-                  <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
-                    <div className="text-3xl">🚗💨</div>
-                    <p className="text-sm font-medium">No listings match your search yet</p>
-                    <p className="text-xs text-muted">Try loosening a filter.</p>
-                  </div>
-                ) : (
-                  <AnimatedList>
-                    {listingsData.map((listing) => {
-                      // Carries every current filter/sort/finance param
-                      // (not just the finance ones) so the detail page's
-                      // "Back to search" link can return to the exact
-                      // search, not just restore the ownership-cost
-                      // inputs — a plain Link isn't real browser history,
-                      // so it has to reconstruct the full URL itself.
-                      const detailParams = new URLSearchParams(current);
-                      if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
-                      const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
-
-                      return (
-                        <ListingCard
-                          key={listing.id}
-                          listing={listing}
-                          detailHref={detailHref}
-                          isWatchlisted={watchlistedIds?.has(listing.id)}
-                          ownershipCost={estimate3YearOwnershipCost(
-                            {
-                              make: listing.make,
-                              year: listing.year ?? undefined,
-                              bodyType: listing.bodyType ?? undefined,
-                              powertrain: listing.powertrain ?? undefined,
-                              engine: listing.engine ?? undefined,
-                              price: listing.price,
-                              mileageKm: listing.mileageKm ?? undefined,
-                            },
-                            { ...financeOptions, annualKm, insuranceCoverType },
-                          )}
-                        />
-                      );
-                    })}
-                  </AnimatedList>
-                )}
-              </div>
-
-              <Pagination current={current} page={resolvedPage} pageCount={pageCount} />
-            </>
+          {listingsData.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 lg:col-start-2 lg:row-start-1 lg:mb-6">
+              <p className="text-sm text-muted">
+                <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
+                matching listing{totalCount === 1 ? "" : "s"}
+              </p>
+              <SortSelect current={sort} />
+            </div>
           )}
-        </main>
-      </div>
+
+          <main className="flex min-w-0 flex-col gap-6 lg:col-start-2 lg:row-start-2">
+            {totalCount > 0 && (
+              <div className="xl:hidden">
+                <MileageStatsBar stats={mileageStats} />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {listingsData.length === 0 ? (
+                <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
+                  <div className="text-3xl">🚗💨</div>
+                  <p className="text-sm font-medium">No listings match your search yet</p>
+                  <p className="text-xs text-muted">Try loosening a filter.</p>
+                </div>
+              ) : (
+                <AnimatedList>
+                  {listingsData.map((listing) => {
+                    // Carries every current filter/sort/finance param
+                    // (not just the finance ones) so the detail page's
+                    // "Back to search" link can return to the exact
+                    // search, not just restore the ownership-cost
+                    // inputs — a plain Link isn't real browser history,
+                    // so it has to reconstruct the full URL itself.
+                    const detailParams = new URLSearchParams(current);
+                    if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
+                    const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
+
+                    return (
+                      <ListingCard
+                        key={listing.id}
+                        listing={listing}
+                        detailHref={detailHref}
+                        isWatchlisted={watchlistedIds?.has(listing.id)}
+                        ownershipCost={estimate3YearOwnershipCost(
+                          {
+                            make: listing.make,
+                            year: listing.year ?? undefined,
+                            bodyType: listing.bodyType ?? undefined,
+                            powertrain: listing.powertrain ?? undefined,
+                            engine: listing.engine ?? undefined,
+                            price: listing.price,
+                            mileageKm: listing.mileageKm ?? undefined,
+                          },
+                          { ...financeOptions, annualKm, insuranceCoverType },
+                        )}
+                      />
+                    );
+                  })}
+                </AnimatedList>
+              )}
+            </div>
+
+            <Pagination current={current} page={resolvedPage} pageCount={pageCount} />
+          </main>
+
+          {totalCount > 0 && (
+            <aside className="hidden xl:sticky xl:top-20 xl:col-start-3 xl:row-start-2 xl:block">
+              <MileageStatsBar stats={mileageStats} orientation="vertical" />
+            </aside>
+          )}
+        </div>
+      )}
     </div>
   );
 }

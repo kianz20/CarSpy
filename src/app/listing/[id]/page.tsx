@@ -4,7 +4,6 @@ import { getListingById, getVehicleModelDescription } from "@/lib/search/listing
 import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
 import { OwnershipYearsSlider } from "@/components/ownership-years-slider";
-import { Disclaimer } from "@/components/disclaimer";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
 import { formatCurrency, formatEngine, formatNumber } from "@/lib/format";
@@ -207,10 +206,6 @@ export default async function ListingDetailPage({
             </div>
           </details>
         </aside>
-      </div>
-
-      <div className="mt-6 lg:mt-8">
-        <Disclaimer />
       </div>
     </div>
   );

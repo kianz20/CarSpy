@@ -1,6 +1,21 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 export function Footer() {
+  // Pinned to the viewport bottom only on the search page — that's the one
+  // view with a long, scrollable results list where the disclaimer/credits
+  // would otherwise scroll out of sight. Everywhere else it stays in normal
+  // document flow (mt-auto), sitting at the true bottom of short pages
+  // without covering content on longer ones (e.g. the ownership breakdown).
+  const isSearchPage = usePathname() === "/";
+
   return (
-    <footer className="mt-auto border-t border-border px-4 py-5 text-center text-xs text-muted">
+    <footer
+      className={`border-t border-border bg-background/90 px-4 py-3 text-center text-xs text-muted backdrop-blur-md ${
+        isSearchPage ? "sticky bottom-0 z-10" : "mt-auto py-5"
+      }`}
+    >
       <p>
         © {new Date().getFullYear()}{" "}
         <a href="https://github.com/kianz20" target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline">
@@ -10,7 +25,7 @@ export function Footer() {
         <a href="https://github.com/kianz20/CarValue" target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline">
           Source on GitHub
         </a>{" "}
-        · MIT Licensed
+        · MIT Licensed · Estimates only, not professional valuations or financial advice — actual costs will vary.
       </p>
     </footer>
   );

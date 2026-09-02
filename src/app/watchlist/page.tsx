@@ -3,7 +3,6 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getWatchlistListings } from "@/lib/watchlist";
 import { estimate3YearOwnershipCost } from "@/lib/ownership";
 import { ListingCard } from "@/components/listing-card";
-import { Disclaimer } from "@/components/disclaimer";
 
 export default async function WatchlistPage() {
   const user = await getCurrentUser();
@@ -15,15 +14,9 @@ export default async function WatchlistPage() {
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <header className="mb-6 flex flex-col gap-2 lg:mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Your watchlist</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Listings you&apos;ve starred, shown with default finance/insurance assumptions — open a
-          listing to tweak them.
-        </p>
       </header>
 
       <div className="flex flex-col gap-6">
-        <Disclaimer />
-
         {listings.length === 0 ? (
           <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
             <div className="text-3xl">☆</div>

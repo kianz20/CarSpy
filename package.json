@@ -16,7 +16,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:dealers": "tsx src/db/seedDealers.ts",
     "crawl": "tsx src/crawler/run.ts",
-    "crawl:backfill-body-type": "tsx src/crawler/backfillBodyType.ts"
+    "crawl:backfill-body-type": "tsx src/crawler/backfillBodyType.ts",
+    "crawl:backfill-make-casing": "tsx src/crawler/backfillMakeCasing.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

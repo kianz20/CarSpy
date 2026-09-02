@@ -27,7 +27,7 @@ export function SortSelect({ current }: { current: string }) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm text-muted">
+    <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm text-muted">
       <span className="font-semibold">Sort by</span>
       <select value={current} onChange={handleChange} className="field w-auto py-1.5">
         {SORT_OPTIONS.map((o) => (

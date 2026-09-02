@@ -14,9 +14,21 @@ const BRACKET_ACCENT: Record<string, string> = {
  * This is context for comparing a listing's price against others like it,
  * nothing more.
  */
-export function MileageStatsBar({ stats }: { stats: MileageBracketStat[] }) {
+export function MileageStatsBar({
+  stats,
+  orientation = "horizontal",
+}: {
+  stats: MileageBracketStat[];
+  orientation?: "horizontal" | "vertical";
+}) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div
+      className={
+        orientation === "vertical"
+          ? "flex flex-col gap-3"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-3"
+      }
+    >
       {stats.map((s) => (
         <div key={s.bracket} className="card relative overflow-hidden p-4">
           <span className={`absolute inset-y-0 left-0 w-1 ${BRACKET_ACCENT[s.bracket] ?? "bg-accent"}`} aria-hidden="true" />

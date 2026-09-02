@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings, dealers, vehicleModelDescriptions } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
@@ -15,12 +15,14 @@ import {
  * src/lib/taxonomy/data.ts for why dropdowns were chosen over that).
  */
 export type ListingSearchFilters = {
-  bodyType?: string;
-  powertrain?: string;
-  make?: string;
-  model?: string;
-  transmission?: string;
-  region?: string;
+  /** Empty/undefined array = no filter on this field, matching anything. */
+  bodyType?: string[];
+  powertrain?: string[];
+  make?: string[];
+  /** Multiple free-text terms, OR'd together (each still partial/ilike). */
+  model?: string[];
+  transmission?: string[];
+  region?: string[];
   minPrice?: number;
   maxPrice?: number;
   maxMileageKm?: number;
@@ -68,12 +70,12 @@ const TOTAL_SORT_CANDIDATE_MULTIPLIER = 10;
  * "Auckland") it covers, not an exact string. Resolves the search's region
  * filter to the actual raw dealer.region values that belong to it (plus any
  * "National" dealer, which covers every region). */
-async function resolveRegionRawValues(region: string): Promise<string[]> {
+async function resolveRegionRawValues(regions: string[]): Promise<string[]> {
   const rows = await db.selectDistinct({ region: dealers.region }).from(dealers).where(sql`${dealers.region} is not null`);
   return rows
     .map((r) => r.region)
     .filter((raw): raw is string => raw !== null)
-    .filter((raw) => isNationwide(raw) || parseDealerRegions(raw).includes(region));
+    .filter((raw) => isNationwide(raw) || parseDealerRegions(raw).some((r) => regions.includes(r)));
 }
 
 async function buildConditions(filters: ListingSearchFilters) {
@@ -85,17 +87,20 @@ async function buildConditions(filters: ListingSearchFilters) {
   // this excludes any that slip through an adapter's own filtering too.
   const conditions = [eq(listings.status, "active"), sql`${listings.price} > 0`];
 
-  if (filters.bodyType) conditions.push(eq(listings.bodyType, filters.bodyType));
+  if (filters.bodyType?.length) conditions.push(inArray(listings.bodyType, filters.bodyType));
   else if (!filters.includeMotorcycles) conditions.push(sql`${listings.bodyType} is distinct from 'motorcycle'`);
-  if (filters.powertrain) conditions.push(eq(listings.powertrain, filters.powertrain));
-  if (filters.make) conditions.push(eq(listings.make, filters.make));
+  if (filters.powertrain?.length) conditions.push(inArray(listings.powertrain, filters.powertrain));
+  if (filters.make?.length) conditions.push(inArray(listings.make, filters.make));
   // Model is partial/case-insensitive (ilike), unlike make's exact-match
   // dropdown — model dropdown values aren't seeded (PLAN.md Phase 2), so
   // free text is the only input available and users won't always match a
-  // dealer's exact casing/spacing (e.g. "RAV4" vs "Rav 4").
-  if (filters.model) conditions.push(ilike(listings.model, `%${filters.model}%`));
-  if (filters.transmission) conditions.push(eq(listings.transmission, filters.transmission));
-  if (filters.region) {
+  // dealer's exact casing/spacing (e.g. "RAV4" vs "Rav 4"). Multiple terms
+  // (comma-separated in the UI) are OR'd together.
+  if (filters.model?.length) {
+    conditions.push(or(...filters.model.map((term) => ilike(listings.model, `%${term}%`)))!);
+  }
+  if (filters.transmission?.length) conditions.push(inArray(listings.transmission, filters.transmission));
+  if (filters.region?.length) {
     const rawValues = await resolveRegionRawValues(filters.region);
     conditions.push(rawValues.length > 0 ? inArray(dealers.region, rawValues) : sql`false`);
   }

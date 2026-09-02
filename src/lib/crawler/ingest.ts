@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings, listingPriceHistory } from "@/db/schema";
 import type { NormalizedListing } from "./types";
+import { getCanonicalMakeMap, resolveMakeCasing } from "./makeCasing";
 
 // See PLAN.md §5a: a listing missing from a crawl isn't immediately delisted
 // (transient site hiccups happen) — it's marked "unconfirmed" and only
@@ -59,12 +60,18 @@ export async function ingestDealerListings(
   const seenExternalIds = new Set(scraped.map((item) => item.externalId));
   const now = new Date();
 
+  // Different dealer platforms render the same brand with different casing
+  // (Motorcentral's "TOYOTA" vs another's "Toyota") — snapping newly-scraped
+  // makes to whatever's already canonical in the DB keeps the make
+  // dropdown/filter from fragmenting into casing duplicates over time.
+  const canonicalMakes = await getCanonicalMakeMap();
+
   for (const batch of chunk(scraped, BATCH_SIZE)) {
     const rows = batch.map((item) => ({
       dealerId,
       externalId: item.externalId,
       url: item.url,
-      make: item.make,
+      make: resolveMakeCasing(item.make, canonicalMakes),
       model: item.model,
       year: item.year,
       variant: item.variant,

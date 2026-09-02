@@ -4,26 +4,17 @@ import Form from "next/form";
 import Link from "next/link";
 import { useState, type FormEvent, type MouseEvent } from "react";
 import { useFormStatus } from "react-dom";
+import { SelectField, type SelectFieldOption } from "@/components/select-field";
+import { MultiSelectField } from "@/components/multi-select-field";
+import { parseListParam, toListParam } from "@/lib/listParams";
 
 type Option = { value: string; label: string };
 
-// The "actual" search filters — everything Clear filters resets/drops from
-// the URL. Deliberately excludes annualKm, insuranceCoverType,
-// financeEnabled and deposit: those configure the ownership-cost estimate,
-// not what listings match, so clearing filters shouldn't touch them.
-const FILTER_FIELD_NAMES = [
-  "bodyType",
-  "powertrain",
-  "make",
-  "model",
-  "transmission",
-  "region",
-  "minYear",
-  "maxYear",
-  "minPrice",
-  "maxPrice",
-  "maxMileageKm",
-] as const;
+// The plain, uncontrolled <input> filter fields — the five dropdowns
+// (bodyType/powertrain/make/transmission/region) are controlled React state
+// instead (see below) since MultiSelectField renders its own listbox rather
+// than a native <select>, so they're tracked separately from this list.
+const NATIVE_FILTER_FIELD_NAMES = ["model", "minYear", "maxYear", "minPrice", "maxPrice", "maxMileageKm"] as const;
 
 export function SearchForm({
   bodyTypes,
@@ -38,14 +29,14 @@ export function SearchForm({
   regions: string[];
   current: Record<string, string>;
 }) {
-  // All the fields below are uncontrolled (defaultValue, not value) — plain
-  // HTML form semantics, which is what next/form's GET-navigation needs. But
-  // that means a client-side navigation alone (e.g. the Clear filters link)
-  // won't reset an already-mounted <select>/<input>'s displayed value, since
-  // React only applies defaultValue on mount, not on every re-render. Keying
-  // on the current filter state forces a remount whenever the URL's filters
-  // actually change, so cleared/changed fields visibly reset instead of
-  // showing stale selections.
+  // The plain <input> fields below are uncontrolled (defaultValue, not
+  // value) — plain HTML form semantics, which is what next/form's
+  // GET-navigation needs. But that means a client-side navigation alone
+  // (e.g. the Clear filters link) won't reset an already-mounted <input>'s
+  // displayed value, since React only applies defaultValue on mount, not on
+  // every re-render. Keying on the current filter state forces a remount
+  // whenever the URL's filters actually change, so cleared/changed fields
+  // visibly reset instead of showing stale selections.
   //
   // The key has to go on a wrapper, not on <Form> itself — next/form's own
   // docs explicitly call out that "passing a key prop to a string action is
@@ -53,24 +44,45 @@ export function SearchForm({
   // handling), which is exactly what broke when it was tried directly on Form.
   const formKey = new URLSearchParams(current).toString();
 
-  // hasFilters mirrors the fields' live values (not just the URL's), so the
-  // Clear filters button appears as soon as the user picks/types something —
-  // not only after they submit and the URL actually changes. Resynced from
-  // `current` whenever formKey changes, right during render (React's
-  // recommended way to reset state on a prop change) rather than in an
-  // effect, which would cause an extra post-commit render. Only counts the
-  // actual filter fields (see FILTER_FIELD_NAMES) — Clear filters doesn't
-  // touch annualKm/insuranceCoverType/financeEnabled/deposit, so there's no
-  // point showing it just because one of those alone is set.
-  const hasAnyFilter = (source: Record<string, string>) =>
-    FILTER_FIELD_NAMES.some((name) => source[name]) ||
-    source.includeMotorcycles === "true";
+  // The five dropdowns are multi-select and controlled (MultiSelectField has
+  // no native <select>/FormData participation of its own), so each needs a
+  // hidden input per selected value to round-trip through next/form's GET
+  // navigation (comma-joined into one param — see lib/listParams.ts), and
+  // its state has to be resynced from `current` on the same
+  // formKey-remount-render schedule as financeEnabled below (a key change
+  // alone only resets *uncontrolled* DOM nodes, not state living here).
+  const [bodyType, setBodyType] = useState(() => parseListParam(current.bodyType));
+  const [powertrain, setPowertrain] = useState(() => parseListParam(current.powertrain));
+  const [make, setMake] = useState(() => parseListParam(current.make));
+  const [transmission, setTransmission] = useState(() => parseListParam(current.transmission));
+  const [region, setRegion] = useState(() => parseListParam(current.region));
+
+  // nativeHasFilters mirrors the plain-input fields' live values (not just
+  // the URL's), so the Clear filters button appears as soon as the user
+  // types/picks something — not only after they submit and the URL actually
+  // changes. hasFilters below ORs this with the dropdown state, which is
+  // already reactive on its own (no scan needed — see below).
+  const hasAnyNativeFilter = (source: Record<string, string>) =>
+    NATIVE_FILTER_FIELD_NAMES.some((name) => source[name]) || source.includeMotorcycles === "true";
   const [prevFormKey, setPrevFormKey] = useState(formKey);
-  const [hasFilters, setHasFilters] = useState(hasAnyFilter(current));
+  const [nativeHasFilters, setNativeHasFilters] = useState(hasAnyNativeFilter(current));
   if (formKey !== prevFormKey) {
     setPrevFormKey(formKey);
-    setHasFilters(hasAnyFilter(current));
+    setNativeHasFilters(hasAnyNativeFilter(current));
+    setBodyType(parseListParam(current.bodyType));
+    setPowertrain(parseListParam(current.powertrain));
+    setMake(parseListParam(current.make));
+    setTransmission(parseListParam(current.transmission));
+    setRegion(parseListParam(current.region));
   }
+
+  // Plain derived value, not stored state — bodyType/powertrain/etc. are
+  // already React state, so this recomputes on every render for free
+  // whenever any of them change (unlike the native fields, there's no
+  // FormData scan needed since nothing here is uncontrolled).
+  const hasFilters =
+    nativeHasFilters ||
+    [bodyType, powertrain, make, transmission, region].some((selected) => selected.length > 0);
 
   // Deposit is required (but only while finance is enabled — see below), and
   // the browser's own validation bubble is easy to miss/dismiss, so show our
@@ -81,7 +93,7 @@ export function SearchForm({
 
   // Drives whether the Deposit field renders at all: with finance off there's
   // no loan, so nothing to put a deposit toward. Resynced from `current`
-  // alongside hasFilters above (same render-time-reset rationale).
+  // alongside nativeHasFilters above (same render-time-reset rationale).
   const [financeEnabled, setFinanceEnabled] = useState(
     current.financeEnabled === "true",
   );
@@ -91,9 +103,10 @@ export function SearchForm({
 
   function handleFormChange(event: FormEvent<HTMLFormElement>) {
     const formData = new FormData(event.currentTarget);
-    // Only the actual filter fields count — see FILTER_FIELD_NAMES.
-    setHasFilters(
-      FILTER_FIELD_NAMES.some(
+    // Only the plain-input filter fields count — the dropdowns are handled
+    // by the `hasFilters` derivation above, not this scan.
+    setNativeHasFilters(
+      NATIVE_FILTER_FIELD_NAMES.some(
         (name) => String(formData.get(name) ?? "").trim() !== "",
       ) || formData.get("includeMotorcycles") === "true",
     );
@@ -111,121 +124,91 @@ export function SearchForm({
     setDepositError(true);
   }
 
-  // Drops only the actual filter keys from the URL, preserving
-  // annualKm/insuranceCoverType/financeEnabled/deposit exactly as they are.
-  const clearParams = new URLSearchParams(current);
-  for (const name of FILTER_FIELD_NAMES) clearParams.delete(name);
-  const clearHref = clearParams.size > 0 ? `/?${clearParams.toString()}` : "/";
+  // Drops every param, not just the filter keys — Clear filters is a full
+  // reset back to the pre-search state (see page.tsx's hasSearched), which
+  // only goes false once financeEnabled disappears from the URL entirely.
+  const clearHref = "/";
 
   // If the fields were only edited but never submitted, the URL never
   // changes when this navigates to clearHref — so the formKey-remount reset
-  // above won't fire. Reset the (uncontrolled) filter fields directly so
-  // stale picks don't linger even when Next's router cache re-renders
-  // identical output. Deliberately field-by-field (not form.reset()): a
-  // blanket reset would also revert annualKm/insuranceCoverType/
-  // financeEnabled/deposit, which Clear filters must leave untouched.
+  // above won't fire. Reset every field directly so stale picks don't linger
+  // even when Next's router cache re-renders identical output.
   function handleClear(event: MouseEvent<HTMLAnchorElement>) {
     const form = event.currentTarget.closest("form");
-    for (const name of FILTER_FIELD_NAMES) {
+    for (const name of [...NATIVE_FILTER_FIELD_NAMES, "annualKm"] as const) {
       const field = form?.elements.namedItem(name);
-      if (
-        field instanceof HTMLInputElement ||
-        field instanceof HTMLSelectElement
-      ) {
-        field.value = "";
-      }
+      if (field instanceof HTMLInputElement) field.value = "";
     }
-    const includeMotorcycles = form?.querySelector<HTMLInputElement>(
-      'input[name="includeMotorcycles"][type="checkbox"]',
-    );
-    if (includeMotorcycles) includeMotorcycles.checked = false;
-    setHasFilters(false);
+    for (const name of ["includeMotorcycles", "financeEnabled"] as const) {
+      const checkbox = form?.querySelector<HTMLInputElement>(`input[name="${name}"][type="checkbox"]`);
+      if (checkbox) checkbox.checked = false;
+    }
+    setBodyType([]);
+    setPowertrain([]);
+    setMake([]);
+    setTransmission([]);
+    setRegion([]);
+    setInsuranceCoverType("");
+    setFinanceEnabled(false);
+    setDepositError(false);
+    setNativeHasFilters(false);
   }
+
+  const makeOptions: SelectFieldOption[] = makes.map((m) => ({ value: m, label: m }));
+  const regionOptions: SelectFieldOption[] = regions.map((r) => ({ value: r, label: r }));
+  const transmissionOptions: SelectFieldOption[] = [
+    { value: "automatic", label: "Automatic" },
+    { value: "manual", label: "Manual" },
+  ];
+  const insuranceOptions: SelectFieldOption[] = [
+    { value: "third_party_fire_theft", label: "Third party, fire & theft" },
+    { value: "none", label: "None (uninsured)" },
+  ];
+  // Not a filter field — insurance cover configures the ownership-cost
+  // estimate rather than what listings match, so (like financeEnabled) it's
+  // excluded from Clear filters/hasFilters. It intentionally does *not*
+  // resync on formKey change either: a search submission never carries a
+  // new insuranceCoverType of its own (there's no way to change it except by
+  // picking it here), so there's nothing for it to go stale against.
+  const [insuranceCoverType, setInsuranceCoverType] = useState(current.insuranceCoverType ?? "");
 
   return (
     <div key={formKey}>
       <Form action="" onChange={handleFormChange} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
         <Field label="Vehicle type">
-          <select
-            name="bodyType"
-            defaultValue={current.bodyType ?? ""}
-            className={selectClass}
-          >
-            <option value="">Any</option>
-            {bodyTypes.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="bodyType" value={toListParam(bodyType)} readOnly />
+          <MultiSelectField values={bodyType} onChange={setBodyType} options={bodyTypes} />
         </Field>
 
         <Field label="Fuel type">
-          <select
-            name="powertrain"
-            defaultValue={current.powertrain ?? ""}
-            className={selectClass}
-          >
-            <option value="">Any</option>
-            {powertrains.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="powertrain" value={toListParam(powertrain)} readOnly />
+          <MultiSelectField values={powertrain} onChange={setPowertrain} options={powertrains} />
         </Field>
 
         <Field label="Make">
-          <select
-            name="make"
-            defaultValue={current.make ?? ""}
-            className={selectClass}
-          >
-            <option value="">Any</option>
-            {makes.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="make" value={toListParam(make)} readOnly />
+          <MultiSelectField values={make} onChange={setMake} options={makeOptions} />
         </Field>
 
-        <Field label="Model">
+        <Field label="Model" hint="Comma-separated for multiple, e.g. RAV4, Corolla">
           <input
             type="text"
             name="model"
             defaultValue={current.model ?? ""}
-            placeholder="e.g. RAV4"
+            placeholder="e.g. RAV4, Corolla"
             className={inputClass}
           />
         </Field>
 
         <Field label="Transmission">
-          <select
-            name="transmission"
-            defaultValue={current.transmission ?? ""}
-            className={selectClass}
-          >
-            <option value="">Any</option>
-            <option value="automatic">Automatic</option>
-            <option value="manual">Manual</option>
-          </select>
+          <input type="hidden" name="transmission" value={toListParam(transmission)} readOnly />
+          <MultiSelectField values={transmission} onChange={setTransmission} options={transmissionOptions} />
         </Field>
 
         <Field label="Region">
-          <select
-            name="region"
-            defaultValue={current.region ?? ""}
-            className={selectClass}
-          >
-            <option value="">Any</option>
-            {regions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="region" value={toListParam(region)} readOnly />
+          <MultiSelectField values={region} onChange={setRegion} options={regionOptions} />
         </Field>
 
         <Field label="Min year">
@@ -302,17 +285,13 @@ export function SearchForm({
           hint="Used for the ownership cost estimate"
           className="col-span-2"
         >
-          <select
-            name="insuranceCoverType"
-            defaultValue={current.insuranceCoverType ?? ""}
-            className={selectClass}
-          >
-            <option value="">Comprehensive (default)</option>
-            <option value="third_party_fire_theft">
-              Third party, fire & theft
-            </option>
-            <option value="none">None (uninsured)</option>
-          </select>
+          <input type="hidden" name="insuranceCoverType" value={insuranceCoverType} readOnly />
+          <SelectField
+            value={insuranceCoverType}
+            onChange={setInsuranceCoverType}
+            options={insuranceOptions}
+            placeholder="Comprehensive (default)"
+          />
         </Field>
 
         <hr className="col-span-full border-border" />
@@ -407,7 +386,6 @@ export function SearchForm({
   );
 }
 
-const selectClass = "field";
 const inputClass = "field";
 
 function Field({
@@ -424,7 +402,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label
+    <div
       className={`flex flex-col gap-1 text-xs font-semibold text-muted ${className ?? ""}`}
     >
       <span>{label}</span>
@@ -440,7 +418,7 @@ function Field({
           </span>
         )
       )}
-    </label>
+    </div>
   );
 }
 
