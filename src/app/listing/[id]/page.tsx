@@ -137,10 +137,21 @@ export default async function ListingDetailPage({
       <section className="flex flex-col gap-3">
         <OwnershipYearsSlider years={ownershipYears} />
 
-        <details className="rounded-lg border border-black/10 dark:border-white/15">
-          <summary className="flex cursor-pointer select-none items-baseline justify-between gap-4 px-4 py-3">
-            <span className="text-sm font-semibold">
-              How the {ownershipCost.ownershipYears}-year ownership cost is calculated
+        <details className="group rounded-lg border border-black/10 dark:border-white/15">
+          <summary className="flex cursor-pointer list-none select-none items-baseline justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-90 dark:text-zinc-500"
+                aria-hidden="true"
+              >
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
+              </svg>
+              <span className="group-open:hidden">{ownershipCost.ownershipYears}-year ownership costs</span>
+              <span className="hidden group-open:inline">
+                How the {ownershipCost.ownershipYears}-year ownership cost is calculated
+              </span>
             </span>
             <span className="text-lg font-bold">{formatCurrency(ownershipCost.total)}</span>
           </summary>
