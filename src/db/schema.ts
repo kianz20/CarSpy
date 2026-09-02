@@ -112,3 +112,42 @@ export const vehicleModelDescriptions = pgTable(
   },
   (table) => [uniqueIndex("vehicle_model_descriptions_make_model_idx").on(table.make, table.model)],
 );
+
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    email: text("email").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("users_email_idx").on(table.email)],
+);
+
+// Opaque bearer token in an httpOnly cookie, validated against this table on
+// every request that needs to know who's signed in — no JWT/signing library,
+// consistent with the rest of the app being DB-driven rather than
+// stateless-token-driven.
+export const sessions = pgTable("sessions", {
+  token: text("token").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const watchlistItems = pgTable(
+  "watchlist_items",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    listingId: integer("listing_id")
+      .notNull()
+      .references(() => listings.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("watchlist_items_user_listing_idx").on(table.userId, table.listingId)],
+);

@@ -19,6 +19,8 @@ import { Pagination } from "@/components/pagination";
 import { ListingCard, type ListingCardData } from "@/components/listing-card";
 import { AnimatedList } from "@/components/animated-list";
 import { Disclaimer } from "@/components/disclaimer";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getWatchlistedListingIds } from "@/lib/watchlist";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -103,12 +105,14 @@ export default async function Home({
   // fields (deposit isn't a spending cap here, just a finance input).
   const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
-  const [bodyTypes, powertrains, makes, regions] = await Promise.all([
+  const [bodyTypes, powertrains, makes, regions, currentUser] = await Promise.all([
     getCategoryOptions("body_type"),
     getCategoryOptions("powertrain"),
     getDistinctMakes(),
     getDistinctRegions(),
+    getCurrentUser(),
   ]);
+  const watchlistedIds = currentUser ? await getWatchlistedListingIds(currentUser.id) : undefined;
 
   let listingsData: ListingCardData[] = [];
   let totalCount = 0;
@@ -219,6 +223,7 @@ export default async function Home({
                           key={listing.id}
                           listing={listing}
                           detailHref={detailHref}
+                          isWatchlisted={watchlistedIds?.has(listing.id)}
                           ownershipCost={estimate3YearOwnershipCost(
                             {
                               make: listing.make,

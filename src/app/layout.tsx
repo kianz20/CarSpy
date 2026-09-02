@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthNav } from "@/components/auth-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -57,7 +58,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="accent-gradient-text text-base">CarSpy</span>
               <span className="pill bg-accent/10 text-accent">BETA</span>
             </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-4">
+              <AuthNav />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
         {children}

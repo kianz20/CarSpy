@@ -3,6 +3,7 @@ import type { OwnershipCostBreakdown } from "@/lib/ownership";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
+import { WatchlistButton } from "@/components/watchlist-button";
 
 export type ListingCardData = {
   id: number;
@@ -35,12 +36,16 @@ export function ListingCard({
   listing,
   ownershipCost,
   detailHref,
+  isWatchlisted,
 }: {
   listing: ListingCardData;
   ownershipCost: OwnershipCostBreakdown;
   /** Internal `/listing/[id]` link, carrying the search's deposit/annualKm
    * along so the detail page's cost breakdown matches what's shown here. */
   detailHref: string;
+  /** Undefined when there's no signed-in user to check a watchlist for —
+   * omits the star entirely rather than showing one that can't do anything. */
+  isWatchlisted?: boolean;
 }) {
   return (
     <div className="card card-hover relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -101,14 +106,19 @@ export function ListingCard({
         </div>
       </div>
 
-      <div className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-t border-border pt-3 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0 sm:text-right">
-        <div>
-          <div className="text-2xl font-extrabold">{formatCurrency(listing.price)}</div>
-          <div className="text-xs text-muted">asking price</div>
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-accent">{formatCurrency(ownershipCost.total)}</div>
-          <div className="text-xs text-muted">est. {ownershipCost.ownershipYears}-yr ownership</div>
+      <div className="relative z-10 flex shrink-0 items-center gap-3 border-t border-border pt-3 sm:border-t-0 sm:pt-0 sm:text-right">
+        {isWatchlisted !== undefined && (
+          <WatchlistButton listingId={listing.id} isWatchlisted={isWatchlisted} />
+        )}
+        <div className="flex flex-1 items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-1">
+          <div>
+            <div className="text-2xl font-extrabold">{formatCurrency(listing.price)}</div>
+            <div className="text-xs text-muted">asking price</div>
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-accent">{formatCurrency(ownershipCost.total)}</div>
+            <div className="text-xs text-muted">est. {ownershipCost.ownershipYears}-yr ownership</div>
+          </div>
         </div>
       </div>
     </div>

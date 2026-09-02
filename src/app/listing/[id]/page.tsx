@@ -8,6 +8,9 @@ import { Disclaimer } from "@/components/disclaimer";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
 import { formatCurrency, formatEngine, formatNumber } from "@/lib/format";
+import { getCurrentUser } from "@/lib/auth/session";
+import { isListingWatchlisted } from "@/lib/watchlist";
+import { WatchlistButton } from "@/components/watchlist-button";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -38,6 +41,8 @@ export default async function ListingDetailPage({
   const { listings: listing, dealers: dealer } = row;
   const price = parseFloat(listing.price);
   const modelDescription = await getVehicleModelDescription(listing.make, listing.model);
+  const currentUser = await getCurrentUser();
+  const isWatchlisted = currentUser ? await isListingWatchlisted(currentUser.id, listing.id) : undefined;
 
   // Carries the same deposit/financeEnabled/annualKm the user set on the
   // search page so the breakdown here matches what they saw on the results
@@ -115,9 +120,14 @@ export default async function ListingDetailPage({
               <div className="text-3xl font-extrabold accent-gradient-text">{formatCurrency(price)}</div>
               <div className="text-xs text-muted">asking price</div>
             </div>
-            <a href={listing.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-              View on {dealer.name} →
-            </a>
+            <div className="flex items-center gap-2">
+              {isWatchlisted !== undefined && (
+                <WatchlistButton listingId={listing.id} isWatchlisted={isWatchlisted} variant="button" />
+              )}
+              <a href={listing.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                View on {dealer.name} →
+              </a>
+            </div>
           </div>
 
           <div className="card grid grid-cols-2 gap-4 p-4 text-sm sm:grid-cols-3">
@@ -197,6 +207,10 @@ export default async function ListingDetailPage({
             </div>
           </details>
         </aside>
+      </div>
+
+      <div className="mt-6 lg:mt-8">
+        <Disclaimer />
       </div>
     </div>
   );
