@@ -20,13 +20,18 @@ export const metadata: Metadata = {
   description: "Find the best used-car deals across NZ dealer inventory",
 };
 
-// Applies a saved theme choice before first paint — avoids a light-mode
-// flash for a user who previously picked dark, since the class/attribute
-// otherwise wouldn't land until ThemeToggle's client-side effect runs.
+// Resolves and applies the theme before first paint, always as an explicit
+// "light"/"dark" attribute — never left unset. Two things depend on that:
+// avoiding a flash of the wrong theme before ThemeToggle's effect runs, and
+// globals.css's `dark:` custom variant, which (unlike Tailwind's default,
+// OS-only dark variant) keys off this attribute so the in-app toggle
+// actually overrides the OS setting instead of every `dark:*` utility
+// class quietly ignoring it and following prefers-color-scheme regardless.
 const themeInitScript = `
   try {
     const saved = localStorage.getItem("theme");
-    if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
+    document.documentElement.dataset.theme =
+      saved === "light" || saved === "dark" ? saved : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   } catch {}
 `;
 

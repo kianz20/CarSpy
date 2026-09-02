@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Tailwind's `dark:` variant defaults to the OS-level prefers-color-scheme
+ * media query and knows nothing about our [data-theme] toggle attribute —
+ * without this, the theme toggle button changes the CSS variables below
+ * (which we do wire to [data-theme] explicitly) but every literal `dark:*`
+ * utility class in the app (e.g. `dark:text-amber-200`) keeps following the
+ * OS setting regardless of what the user picked in-app. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #f7f7fb;
   --surface: #ffffff;
