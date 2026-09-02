@@ -90,15 +90,15 @@ export default async function ListingDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <Link href={backHref} className="text-sm text-zinc-500 hover:underline dark:text-zinc-400">
-        ← Back to search
+      <Link href={backHref} className="flex w-fit items-center gap-1 text-sm text-muted hover:text-accent">
+        <span aria-hidden="true">←</span> Back to search
       </Link>
 
       <header>
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
           {listing.year} {listing.make} {listing.model}
         </h1>
-        {listing.variant && <p className="text-sm text-zinc-500 dark:text-zinc-400">{listing.variant}</p>}
+        {listing.variant && <p className="text-sm text-muted">{listing.variant}</p>}
       </header>
 
       <ListingImage
@@ -107,22 +107,17 @@ export default async function ListingDetailPage({
         alt={`${listing.year ?? ""} ${listing.make} ${listing.model}`.trim()}
       />
 
-      <div className="flex flex-wrap items-baseline justify-between gap-4 rounded-lg border border-black/10 p-4 dark:border-white/15">
+      <div className="card flex flex-wrap items-center justify-between gap-4 p-4">
         <div>
-          <div className="text-3xl font-bold">{formatCurrency(price)}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">asking price</div>
+          <div className="text-3xl font-extrabold accent-gradient-text">{formatCurrency(price)}</div>
+          <div className="text-xs text-muted">asking price</div>
         </div>
-        <a
-          href={listing.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-        >
+        <a href={listing.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
           View on {dealer.name} →
         </a>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 rounded-lg border border-black/10 p-4 text-sm dark:border-white/15 sm:grid-cols-3">
+      <div className="card grid grid-cols-2 gap-4 p-4 text-sm sm:grid-cols-3">
         <Detail label="Mileage" value={listing.mileageKm !== null ? (listing.mileageKm === 0 ? "New" : `${formatNumber(listing.mileageKm)} km`) : undefined} />
         <Detail label="Transmission" value={listing.transmission ?? undefined} capitalize />
         <Detail label="Fuel type" value={listing.powertrain ?? undefined} capitalize />
@@ -137,13 +132,13 @@ export default async function ListingDetailPage({
       <section className="flex flex-col gap-3">
         <OwnershipYearsSlider years={ownershipYears} />
 
-        <details className="group rounded-lg border border-black/10 dark:border-white/15">
-          <summary className="flex cursor-pointer list-none select-none items-baseline justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <details className="card group overflow-hidden">
+          <summary className="flex cursor-pointer list-none select-none items-baseline justify-between gap-4 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2 text-sm font-semibold">
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-90 dark:text-zinc-500"
+                className="h-4 w-4 shrink-0 text-accent transition-transform group-open:rotate-90"
                 aria-hidden="true"
               >
                 <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
@@ -153,9 +148,9 @@ export default async function ListingDetailPage({
                 How the {ownershipCost.ownershipYears}-year ownership cost is calculated
               </span>
             </span>
-            <span className="text-lg font-bold">{formatCurrency(ownershipCost.total)}</span>
+            <span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>
           </summary>
-          <div className="border-t border-black/10 px-4 pb-4 pt-3 dark:border-white/15">
+          <div className="border-t border-border px-4 pb-4 pt-3">
             <OwnershipBreakdown
               breakdown={ownershipCost}
               price={price}
@@ -182,7 +177,7 @@ function Detail({ label, value, capitalize }: { label: string; value?: string; c
   if (!value) return null;
   return (
     <div>
-      <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
+      <div className="text-xs font-semibold text-muted">{label}</div>
       <div className={capitalize ? "capitalize" : undefined}>{value}</div>
     </div>
   );

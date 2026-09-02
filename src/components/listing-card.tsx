@@ -23,6 +23,14 @@ export type ListingCardData = {
   imageUrl: string | null;
 };
 
+const POWERTRAIN_PILL: Record<string, string> = {
+  ev: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
+  phev: "bg-teal-500/12 text-teal-600 dark:text-teal-400",
+  hybrid: "bg-cyan-500/12 text-cyan-600 dark:text-cyan-400",
+  diesel: "bg-orange-500/12 text-orange-600 dark:text-orange-400",
+  petrol: "bg-surface-2 text-muted",
+};
+
 export function ListingCard({
   listing,
   ownershipCost,
@@ -35,49 +43,73 @@ export function ListingCard({
   detailHref: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/15 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex gap-3">
+    <div className="card card-hover relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Stretched-link pattern — makes the whole card clickable without
+          nesting an <a> inside another <a> (the outbound dealer link below
+          needs its own, separately-clickable anchor). */}
+      <Link
+        href={detailHref}
+        className="absolute inset-0 z-0"
+        aria-label={`${listing.year ?? ""} ${listing.make} ${listing.model}`.trim()}
+      />
+
+      <div className="flex min-w-0 gap-4">
         <ListingImage
           src={listing.imageUrl ?? undefined}
           fallbackSrc={getStockImageUrl(listing.make, listing.model, listing.year ?? undefined)}
           alt={`${listing.year ?? ""} ${listing.make} ${listing.model}`.trim()}
           compact
         />
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <Link href={detailHref} className="text-lg font-semibold hover:underline">
+            <span className="truncate text-base font-semibold sm:text-lg">
               {listing.year ?? ""} {listing.make} {listing.model}
-            </Link>
+            </span>
             {listing.importStatus && (
-              <span className="rounded bg-black/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
+              <span className="pill bg-surface-2 text-muted">
                 {listing.importStatus === "nz_new" ? "NZ new" : "Import"}
               </span>
             )}
           </div>
-          {listing.variant && <div className="text-sm text-zinc-500 dark:text-zinc-400">{listing.variant}</div>}
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+          {listing.variant && <div className="truncate text-sm text-muted">{listing.variant}</div>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {listing.mileageKm !== null && (
-              <span>{listing.mileageKm === 0 ? "New" : `${formatNumber(listing.mileageKm)} km`}</span>
+              <span className="pill bg-surface-2 text-muted">
+                {listing.mileageKm === 0 ? "New" : `${formatNumber(listing.mileageKm)} km`}
+              </span>
             )}
-            {listing.transmission && <span className="capitalize">{listing.transmission}</span>}
-            {listing.powertrain && <span className="capitalize">{listing.powertrain}</span>}
-            {listing.bodyType && <span className="capitalize">{listing.bodyType.replace("_", " ")}</span>}
+            {listing.transmission && <span className="pill bg-surface-2 text-muted capitalize">{listing.transmission}</span>}
+            {listing.powertrain && (
+              <span className={`pill capitalize ${POWERTRAIN_PILL[listing.powertrain] ?? "bg-surface-2 text-muted"}`}>
+                {listing.powertrain}
+              </span>
+            )}
+            {listing.bodyType && <span className="pill bg-surface-2 text-muted capitalize">{listing.bodyType.replace("_", " ")}</span>}
           </div>
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-1.5 truncate text-xs text-muted">
             {listing.dealerName}
             {listing.dealerRegion ? ` — ${listing.dealerRegion}` : ""} ·{" "}
-            <a href={listing.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            <a
+              href={listing.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative z-10 hover:text-accent hover:underline"
+            >
               view on dealer site ↗
             </a>
           </div>
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
-        <div className="text-2xl font-bold">{formatCurrency(listing.price)}</div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">asking price</div>
-        <div className="mt-2 text-sm font-medium">{formatCurrency(ownershipCost.total)}</div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">est. {ownershipCost.ownershipYears}-year ownership cost</div>
+      <div className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-t border-border pt-3 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0 sm:text-right">
+        <div>
+          <div className="text-2xl font-extrabold">{formatCurrency(listing.price)}</div>
+          <div className="text-xs text-muted">asking price</div>
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-accent">{formatCurrency(ownershipCost.total)}</div>
+          <div className="text-xs text-muted">est. {ownershipCost.ownershipYears}-yr ownership</div>
+        </div>
       </div>
     </div>
   );

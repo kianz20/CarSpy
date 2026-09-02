@@ -140,7 +140,7 @@ export function SearchForm({
   return (
     <div key={formKey}>
       <Form action="" onChange={handleFormChange} className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4 rounded-lg border border-black/10 p-4 dark:border-white/15 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Field label="Vehicle type">
           <select
             name="bodyType"
@@ -280,25 +280,17 @@ export function SearchForm({
 
         <div className="flex flex-col justify-end">
           {hasFilters ? (
-            <Link
-              href={clearHref}
-              onClick={handleClear}
-              className="flex items-center justify-center rounded-md border border-black/15 px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-            >
+            <Link href={clearHref} onClick={handleClear} className="btn btn-ghost justify-center">
               Clear filters
             </Link>
           ) : (
-            <button
-              type="button"
-              disabled
-              className="flex cursor-not-allowed items-center justify-center rounded-md border border-black/10 px-4 py-1.5 text-sm font-medium text-zinc-400 dark:border-white/10 dark:text-zinc-600"
-            >
+            <button type="button" disabled className="btn btn-ghost cursor-not-allowed justify-center opacity-45">
               Clear filters
             </button>
           )}
         </div>
 
-        <hr className="col-span-full border-black/10 dark:border-white/15" />
+        <hr className="col-span-full border-border" />
 
         <Field
           label="Insurance cover"
@@ -318,7 +310,7 @@ export function SearchForm({
           </select>
         </Field>
 
-        <hr className="col-span-full border-black/10 dark:border-white/15" />
+        <hr className="col-span-full border-border" />
 
         <Field label="How many km do you drive per year?" className="col-span-2">
           <input
@@ -331,7 +323,7 @@ export function SearchForm({
           />
         </Field>
 
-        <hr className="col-span-full border-black/10 dark:border-white/15" />
+        <hr className="col-span-full border-border" />
 
         <Field label="Finance" className="col-span-2">
           <div className="flex min-h-[30px] items-center gap-2">
@@ -340,9 +332,9 @@ export function SearchForm({
               name="financeEnabled"
               value="true"
               defaultChecked={current.financeEnabled === "true"}
-              className="h-4 w-4 rounded border-black/20 dark:border-white/20"
+              className="h-4 w-4 rounded border-border accent-accent"
             />
-            <span className="text-sm font-normal text-zinc-700 dark:text-zinc-300">
+            <span className="text-sm font-normal text-foreground/80">
               Are you financing this car?
             </span>
           </div>
@@ -373,7 +365,7 @@ export function SearchForm({
               step={500}
               required
               onInvalid={handleDepositInvalid}
-              className={`${inputClass} ${depositError ? "border-red-500 focus:border-red-500 dark:border-red-500" : ""}`}
+              className={`field ${depositError ? "!border-red-500" : ""}`}
             />
           </Field>
         )}
@@ -391,9 +383,8 @@ export function SearchForm({
   );
 }
 
-const selectClass =
-  "w-full rounded-md border border-black/15 bg-white px-2 py-1.5 text-sm dark:border-white/20 dark:bg-black";
-const inputClass = selectClass;
+const selectClass = "field";
+const inputClass = "field";
 
 function Field({
   label,
@@ -410,17 +401,17 @@ function Field({
 }) {
   return (
     <label
-      className={`flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 ${className ?? ""}`}
+      className={`flex flex-col gap-1 text-xs font-semibold text-muted ${className ?? ""}`}
     >
       <span>{label}</span>
       {children}
       {error ? (
-        <span className="text-[10px] font-normal text-red-600 dark:text-red-400">
+        <span className="text-[10px] font-normal text-red-500">
           {error}
         </span>
       ) : (
         hint && (
-          <span className="text-[10px] font-normal text-zinc-400 dark:text-zinc-500">
+          <span className="text-[10px] font-normal text-muted/80">
             {hint}
           </span>
         )
@@ -439,7 +430,7 @@ function SearchButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex w-full items-center justify-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-70 dark:hover:bg-[#ccc]"
+      className="btn btn-primary w-full py-2.5"
     >
       {pending && <Spinner />}
       {pending ? "Searching…" : "Search"}

@@ -271,21 +271,21 @@ export function OwnershipBreakdown({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="rounded-lg border border-black/10 p-3 dark:border-white/15"
+          className="rounded-lg border border-border bg-surface-2/60 p-3"
         >
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-sm font-medium">{row.label}</span>
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-semibold">{row.label}</span>
+            <span className="text-sm font-bold">
               {formatCurrency(row.amount)}
             </span>
           </div>
           {row.headerExtra && <div className="mt-2">{row.headerExtra}</div>}
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-1 text-xs text-muted">
             {row.explanation}
           </div>
           {row.subItems && (
-            <div className="mt-2 flex flex-col gap-2 border-t border-black/5 pt-2 dark:border-white/10">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+            <div className="mt-2 flex flex-col gap-2 border-t border-border pt-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted/80">
                 Per year
               </span>
               {row.subItems.map((sub) => (
@@ -296,7 +296,7 @@ export function OwnershipBreakdown({
                       {formatCurrency(sub.amount)}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <p className="mt-0.5 text-[11px] text-muted">
                     {sub.explanation}
                   </p>
                 </div>
@@ -305,11 +305,11 @@ export function OwnershipBreakdown({
           )}
         </div>
       ))}
-      <div className="flex items-baseline justify-between border-t border-black/10 pt-3 dark:border-white/15">
+      <div className="flex items-baseline justify-between border-t border-border pt-3">
         <span className="text-sm font-semibold">
           Total {breakdown.ownershipYears}-year ownership cost
         </span>
-        <span className="text-lg font-bold">
+        <span className="text-lg font-extrabold accent-gradient-text">
           {formatCurrency(breakdown.total)}
         </span>
       </div>

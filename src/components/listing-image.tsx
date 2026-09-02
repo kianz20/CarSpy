@@ -38,8 +38,8 @@ export function ListingImage({
       }}
       className={
         compact
-          ? "h-20 w-28 shrink-0 rounded-md border border-black/10 object-cover dark:border-white/15"
-          : "w-full rounded-lg border border-black/10 object-contain dark:border-white/15"
+          ? "h-20 w-28 shrink-0 rounded-lg border border-border bg-surface-2 object-cover"
+          : "w-full rounded-xl border border-border bg-surface-2 object-contain"
       }
     />
   );
@@ -50,9 +50,7 @@ export function ListingImage({
     <div className="flex flex-col gap-1">
       {image}
       {usedFallback && (
-        <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500">
-          Representative photo, not the actual vehicle
-        </p>
+        <p className="text-center text-[11px] text-muted">Representative photo, not the actual vehicle</p>
       )}
     </div>
   );

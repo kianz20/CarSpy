@@ -30,9 +30,9 @@ export function InsuranceCoverToggle({
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="font-medium text-zinc-600 dark:text-zinc-400">Insurance cover:</span>
-      <div className="flex overflow-hidden rounded-md border border-black/15 dark:border-white/20">
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="font-semibold text-muted">Insurance cover:</span>
+      <div className="flex overflow-hidden rounded-full border border-border">
         {(
           [
             { value: "comprehensive", label: "Comprehensive" },
@@ -47,8 +47,8 @@ export function InsuranceCoverToggle({
             aria-pressed={coverType === option.value}
             className={`px-2.5 py-1 font-medium transition-colors ${
               coverType === option.value
-                ? "bg-foreground text-background"
-                : "bg-transparent text-zinc-600 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10"
+                ? "bg-gradient-to-br from-accent to-accent-2 text-accent-foreground"
+                : "bg-transparent text-muted hover:bg-surface-2"
             }`}
           >
             {option.label}

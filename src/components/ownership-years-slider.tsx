@@ -21,10 +21,10 @@ export function OwnershipYearsSlider({ years }: { years: number }) {
   }
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    <label className="card flex flex-col gap-2 p-4 text-sm">
       <span className="flex items-baseline justify-between">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">Ownership period</span>
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="font-semibold">Ownership period</span>
+        <span className="pill bg-accent/10 text-accent">
           {years} year{years === 1 ? "" : "s"}
         </span>
       </span>
@@ -35,8 +35,13 @@ export function OwnershipYearsSlider({ years }: { years: number }) {
         step={1}
         value={years}
         onChange={handleChange}
-        className="w-full accent-foreground"
+        className="w-full accent-accent"
       />
+      <div className="flex justify-between text-[10px] text-muted">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span key={n}>{n}</span>
+        ))}
+      </div>
     </label>
   );
 }

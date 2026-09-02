@@ -6,11 +6,14 @@
  */
 export function Disclaimer() {
   return (
-    <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-      Estimates only, not professional valuations or financial advice. Mileage-bracket prices reflect only the
-      listings currently matching your search, not a market-wide valuation. Ownership costs use published NZ
-      reference rates (fuel, RUC, insurance, finance) and bracket assumptions by body type/powertrain/age — actual
-      costs will vary.
+    <p className="flex items-start gap-2 rounded-xl border border-amber-400 bg-amber-100 px-3.5 py-2.5 text-xs font-medium text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/15 dark:text-amber-200">
+      <span aria-hidden="true">⚠️</span>
+      <span>
+        Estimates only, not professional valuations or financial advice. Mileage-bracket prices reflect only the
+        listings currently matching your search, not a market-wide valuation. Ownership costs use published NZ
+        reference rates (fuel, RUC, insurance, finance) and bracket assumptions by body type/powertrain/age — actual
+        costs will vary.
+      </span>
     </p>
   );
 }

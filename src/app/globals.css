@@ -1,26 +1,194 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f1f8;
+  --foreground: #14141f;
+  --muted: #6b6b80;
+  --border: rgba(20, 20, 31, 0.08);
+
+  --accent: #6d5bff;
+  --accent-2: #22d3ee;
+  --accent-foreground: #ffffff;
+
+  --shadow-color: 240 30% 10%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0b0b14;
+    --surface: #131320;
+    --surface-2: #1a1a2a;
+    --foreground: #f2f2fa;
+    --muted: #9a9ab0;
+    --border: rgba(255, 255, 255, 0.09);
+
+    --accent: #8b7bff;
+    --accent-2: #4fe0f5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0b0b14;
+  --surface: #131320;
+  --surface-2: #1a1a2a;
+  --foreground: #f2f2fa;
+  --muted: #9a9ab0;
+  --border: rgba(255, 255, 255, 0.09);
+  --accent: #8b7bff;
+  --accent-2: #4fe0f5;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
+  background-image:
+    radial-gradient(70rem 40rem at 90% -10%, color-mix(in oklch, var(--accent) 14%, transparent), transparent),
+    radial-gradient(60rem 30rem at -10% 10%, color-mix(in oklch, var(--accent-2) 12%, transparent), transparent);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--accent) 35%, transparent);
+  color: var(--foreground);
+}
+
+/* Thin, unobtrusive scrollbar that still matches the theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 18%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Card/surface primitive shared across the app */
+.card {
+  background: color-mix(in oklch, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 8px 24px -12px hsl(var(--shadow-color) / 0.18);
+}
+
+.card-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px hsl(var(--shadow-color) / 0.06), 0 16px 32px -12px hsl(var(--shadow-color) / 0.26);
+  border-color: color-mix(in oklch, var(--accent) 30%, var(--border));
+}
+
+.accent-gradient-text {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--surface) 96%, transparent);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.field:hover {
+  border-color: color-mix(in oklch, var(--accent) 40%, var(--border));
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent);
+  background: var(--surface);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1.1rem;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, opacity 150ms ease;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent) 60%, var(--accent-2)));
+  color: var(--accent-foreground);
+  box-shadow: 0 8px 20px -8px color-mix(in oklch, var(--accent) 70%, transparent);
+}
+.btn-primary:hover {
+  box-shadow: 0 10px 24px -6px color-mix(in oklch, var(--accent) 75%, transparent);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+}
+.btn-ghost {
+  background: color-mix(in oklch, var(--surface-2) 80%, transparent);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.btn-ghost:hover {
+  border-color: color-mix(in oklch, var(--accent) 35%, var(--border));
+  background: color-mix(in oklch, var(--accent) 8%, var(--surface-2));
+}
+.btn-ghost:disabled {
+  opacity: 0.45;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 400ms ease both;
 }
