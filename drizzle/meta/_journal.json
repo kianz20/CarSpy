@@ -36,6 +36,20 @@
       "when": 1788322328771,
       "tag": "0004_strong_slayback",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788397058047,
+      "tag": "0005_large_madame_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788398653566,
+      "tag": "0006_parallel_clea",
+      "breakpoints": true
     }
   ]
 }

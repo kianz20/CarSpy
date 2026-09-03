@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { SelectField, type SelectFieldOption } from "@/components/select-field";
 import { MultiSelectField } from "@/components/multi-select-field";
 import { parseListParam, toListParam } from "@/lib/listParams";
+import type { OwnershipDefaults } from "@/lib/settings";
 
 type Option = { value: string; label: string };
 
@@ -31,12 +32,18 @@ export function SearchForm({
   makes,
   regions,
   current,
+  defaults,
 }: {
   bodyTypes: Option[];
   powertrains: Option[];
   makes: string[];
   regions: string[];
   current: Record<string, string>;
+  /** The user's saved ownership-cost settings (account or guest cookie) —
+   * used to pre-fill annualKm/finance/deposit when the URL doesn't already
+   * specify them, so a first search already reflects what they told
+   * Settings once instead of always starting from hardcoded defaults. */
+  defaults: OwnershipDefaults;
 }) {
   // The plain <input> fields below are uncontrolled (defaultValue, not
   // value) — plain HTML form semantics, which is what next/form's
@@ -100,14 +107,19 @@ export function SearchForm({
   // nothing is lost by replacing it.
   const [depositError, setDepositError] = useState(false);
 
+  // Falls back to the saved default only when the URL doesn't already say —
+  // once a search is submitted, financeEnabled always round-trips explicitly
+  // (see the hidden-fallback comment below), so this mainly matters for the
+  // very first, pre-search render.
+  const resolveFinanceEnabled = (source: Record<string, string>) =>
+    source.financeEnabled !== undefined ? source.financeEnabled === "true" : defaults.financeEnabled;
+
   // Drives whether the Deposit field renders at all: with finance off there's
   // no loan, so nothing to put a deposit toward. Resynced from `current`
   // alongside nativeHasFilters above (same render-time-reset rationale).
-  const [financeEnabled, setFinanceEnabled] = useState(
-    current.financeEnabled === "true",
-  );
+  const [financeEnabled, setFinanceEnabled] = useState(() => resolveFinanceEnabled(current));
   if (formKey !== prevFormKey) {
-    setFinanceEnabled(current.financeEnabled === "true");
+    setFinanceEnabled(resolveFinanceEnabled(current));
   }
 
   function handleFormChange(event: FormEvent<HTMLFormElement>) {
@@ -315,7 +327,7 @@ export function SearchForm({
           <input
             type="number"
             name="annualKm"
-            defaultValue={current.annualKm ?? "12000"}
+            defaultValue={current.annualKm ?? String(defaults.annualKm)}
             min={0}
             step={1000}
             className={inputClass}
@@ -330,7 +342,7 @@ export function SearchForm({
               type="checkbox"
               name="financeEnabled"
               value="true"
-              defaultChecked={current.financeEnabled === "true"}
+              defaultChecked={resolveFinanceEnabled(current)}
               className="h-4 w-4 rounded border-border accent-accent"
             />
             <span className="text-sm font-normal text-foreground/80">
@@ -359,7 +371,7 @@ export function SearchForm({
             <input
               type="number"
               name="deposit"
-              defaultValue={current.deposit ?? ""}
+              defaultValue={current.deposit ?? (defaults.deposit !== undefined ? String(defaults.deposit) : "")}
               min={0}
               step={500}
               required

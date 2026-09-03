@@ -151,3 +151,32 @@ export const watchlistItems = pgTable(
   },
   (table) => [uniqueIndex("watchlist_items_user_listing_idx").on(table.userId, table.listingId)],
 );
+
+// Free-text feedback submitted from the nav's feedback button. userId is
+// nullable — anonymous visitors can submit too, with an optional email if
+// they want a reply. readAt null = unread, drives the admin nav's bell badge.
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  email: text("email"),
+  message: text("message").notNull(),
+  pageUrl: text("page_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  readAt: timestamp("read_at"),
+});
+
+// A signed-in user's saved ownership-cost defaults (Settings page) — applied
+// wherever the search/listing pages don't already have an explicit value
+// from the URL, so a search "remembers" what a user told it once instead of
+// asking every time. Logged-out visitors get the equivalent via a cookie
+// (see lib/settings.ts) rather than a DB row, since there's no user to key on.
+export const userSettings = pgTable("user_settings", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id),
+  ownershipYears: integer("ownership_years").notNull().default(3),
+  annualKm: integer("annual_km").notNull().default(12000),
+  financeEnabled: boolean("finance_enabled").notNull().default(false),
+  deposit: numeric("deposit", { precision: 10, scale: 2 }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

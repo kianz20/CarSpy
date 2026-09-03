@@ -3,8 +3,8 @@ import Link from "next/link";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/footer";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthNav } from "@/components/auth-nav";
+import { FeedbackButton } from "@/components/feedback-button";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,11 +24,12 @@ export const metadata: Metadata = {
 
 // Resolves and applies the theme before first paint, always as an explicit
 // "light"/"dark" attribute — never left unset. Two things depend on that:
-// avoiding a flash of the wrong theme before ThemeToggle's effect runs, and
+// avoiding a flash of the wrong theme before the Settings page's theme
+// control (see components/theme-toggle.tsx) reads it on mount, and
 // globals.css's `dark:` custom variant, which (unlike Tailwind's default,
-// OS-only dark variant) keys off this attribute so the in-app toggle
-// actually overrides the OS setting instead of every `dark:*` utility
-// class quietly ignoring it and following prefers-color-scheme regardless.
+// OS-only dark variant) keys off this attribute so the saved choice actually
+// overrides the OS setting instead of every `dark:*` utility class quietly
+// ignoring it and following prefers-color-scheme regardless.
 const themeInitScript = `
   try {
     const saved = localStorage.getItem("theme");
@@ -67,10 +68,28 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <div className="flex items-center gap-4">
               <AuthNav />
-              <ThemeToggle />
+              <Link
+                href="/settings"
+                aria-label="Ownership-cost settings"
+                className="btn-ghost flex h-8 w-8 items-center justify-center rounded-full !p-0"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065Z"
+                  />
+                  <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
             </div>
           </div>
         </div>
+        {/* Deliberately outside the header's own centered/max-width div —
+            fixed to the actual viewport corner so it can never push the
+            logo/AuthNav/settings link around, however the header's own
+            layout changes. */}
+        <FeedbackButton />
         {children}
         <Footer />
       </body>
