@@ -92,21 +92,13 @@ export function DistributionBar({
                 padding: "10px",
               }}
               labelStyle={{ color: "var(--color-foreground)" }}
-              formatter={(value: number) => {
-                if (value === min) return minFormatted;
-                if (value === max) return maxFormatted;
-                if (value === avg) return avgFormatted;
+              formatter={(value) => {
+                const num = Number(value);
+                if (num === min) return minFormatted;
+                if (num === max) return maxFormatted;
+                if (num === avg) return avgFormatted;
                 return value;
               }}
-              contentFormatter={(content) => (
-                <div style={{ padding: "8px 0" }}>
-                  {content && (
-                    <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                      {content[0]?.payload?.position}: {content[0]?.value}
-                    </div>
-                  )}
-                </div>
-              )}
             />
 
             {/* Line showing the range */}
@@ -141,8 +133,6 @@ export function DistributionBar({
                 fontSize: 14,
                 fontWeight: 700,
                 offset: 5,
-                background: { fill: "var(--color-surface-2)", stroke: "none", opacity: 0.8 },
-                padding: 4,
               }}
             />
           </LineChart>
