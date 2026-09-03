@@ -91,10 +91,16 @@ function parseListingPage(html: string, origin: string): ListingPageCard[] {
     const { mileageKm, transmission, powertrain, engine } = classifySpecLine(specsText);
 
     // The card's photo sits alongside a promo badge image (class varies —
-    // "on-sale", "new", etc., so denylisting classes is fragile) inside the
-    // same wrapper. The actual car photo is the only <img> here with an
-    // `alt` attribute, which is what actually distinguishes it.
-    const imageSrc = $(el).find(".cell-photo img[alt]").first().attr("src");
+    // "on-sale", "new", etc.) inside the same wrapper, wrapped in its own
+    // `.vehicle-badges` container. Some template tiers (e.g. Universal
+    // Imports) don't put an `alt` attribute on the actual photo either, so
+    // excluding the badge wrapper is the reliable distinguisher, not
+    // requiring `alt`.
+    const imageSrc = $(el)
+      .find(".cell-photo img")
+      .not(".vehicle-badges img")
+      .first()
+      .attr("src");
     const imageUrl = imageSrc ? new URL(imageSrc, origin).toString() : undefined;
 
     cards.push({
@@ -163,6 +169,16 @@ export async function fetchDetailPageData(url: string): Promise<DetailPageData> 
   let imageUrl: string | undefined;
   const ogImageMatches = [...html.matchAll(/<meta property="og:image" content="([^"]+)"/g)];
   if (ogImageMatches.length > 0) imageUrl = ogImageMatches[ogImageMatches.length - 1][1];
+
+  // Some template tiers (e.g. Universal Imports) omit og:image entirely.
+  // Their detail page still has a photo gallery — pull the first image
+  // straight from there instead, resolving it against the page's own origin
+  // since the gallery uses root-relative paths.
+  if (!imageUrl) {
+    const $ = cheerio.load(html);
+    const gallerySrc = $("#gallery img").first().attr("src");
+    if (gallerySrc) imageUrl = new URL(gallerySrc, url).toString();
+  }
 
   return { bodyType, imageUrl };
 }

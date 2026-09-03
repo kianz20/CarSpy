@@ -53,7 +53,8 @@ export function ListingCard({
    * actually higher than the current price, i.e. a genuine drop. */
   firstSeenPrice?: FirstSeenPrice;
 }) {
-  const priceDrop = firstSeenPrice !== undefined ? firstSeenPrice.price - listing.price : 0;
+  const priceDrop =
+    firstSeenPrice !== undefined ? firstSeenPrice.price - listing.price : 0;
 
   return (
     <div className="card card-hover group/card relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -73,7 +74,11 @@ export function ListingCard({
       <div className="flex min-w-0 gap-4">
         <ListingImage
           src={listing.imageUrl ?? undefined}
-          fallbackSrc={getStockImageUrl(listing.make, listing.model, listing.year ?? undefined)}
+          fallbackSrc={getStockImageUrl(
+            listing.make,
+            listing.model,
+            listing.year ?? undefined,
+          )}
           alt={`${listing.year ?? ""} ${listing.make} ${listing.model}`.trim()}
           compact
         />
@@ -88,20 +93,34 @@ export function ListingCard({
               </span>
             )}
           </div>
-          {listing.variant && <div className="truncate text-sm text-muted">{listing.variant}</div>}
+          {listing.variant && (
+            <div className="truncate text-sm text-muted">{listing.variant}</div>
+          )}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {listing.mileageKm !== null && (
               <span className="pill bg-surface-2 text-muted">
-                {listing.mileageKm === 0 ? "New" : `${formatNumber(listing.mileageKm)} km`}
+                {listing.mileageKm === 0
+                  ? "New"
+                  : `${formatNumber(listing.mileageKm)} km`}
               </span>
             )}
-            {listing.transmission && <span className="pill bg-surface-2 text-muted capitalize">{listing.transmission}</span>}
+            {listing.transmission && (
+              <span className="pill bg-surface-2 text-muted capitalize">
+                {listing.transmission}
+              </span>
+            )}
             {listing.powertrain && (
-              <span className={`pill capitalize ${POWERTRAIN_PILL[listing.powertrain] ?? "bg-surface-2 text-muted"}`}>
+              <span
+                className={`pill capitalize ${POWERTRAIN_PILL[listing.powertrain] ?? "bg-surface-2 text-muted"}`}
+              >
                 {listing.powertrain}
               </span>
             )}
-            {listing.bodyType && <span className="pill bg-surface-2 text-muted capitalize">{listing.bodyType.replace("_", " ")}</span>}
+            {listing.bodyType && (
+              <span className="pill bg-surface-2 text-muted capitalize">
+                {listing.bodyType.replace("_", " ")}
+              </span>
+            )}
           </div>
           <div className="mt-1.5 truncate text-xs text-muted">
             {listing.dealerName}
@@ -136,13 +155,21 @@ export function ListingCard({
                   </span>
                 </span>
               )}
-              <div className="text-2xl font-extrabold">{formatCurrency(listing.price)}</div>
+              <div className="text-2xl font-extrabold">
+                {formatCurrency(listing.price)}
+              </div>
             </div>
             <div className="text-xs text-muted">asking price</div>
           </div>
           <div>
-            <div className="text-sm font-semibold text-accent">{formatCurrency(ownershipCost.total)}</div>
-            <div className="text-xs text-muted">est. {ownershipCost.ownershipYears}-yr ownership costs</div>
+            <div className="text-sm font-semibold text-accent">
+              {formatCurrency(ownershipCost.total)}
+            </div>
+            <div className="text-xs text-muted">
+              {ownershipCost.ownershipYears === 1
+                ? "Annual maintenance cost"
+                : `Cost to own over ${ownershipCost.ownershipYears} years`}
+            </div>
           </div>
         </div>
       </div>

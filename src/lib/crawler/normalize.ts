@@ -52,6 +52,39 @@ export function parseVehicleTitle(rawTitle: string): {
   return { year, make, model, variant };
 }
 
+// "Factory Built" is NZTA's designation for a vehicle/trailer with no
+// registered manufacturer (common for trailers, e.g. "1999 Factory Built
+// Brent Smith" — a trailer built by/registered to that person, not a car
+// make). Some dealer platforms list trailers alongside cars in the same
+// inventory feed with no body-type distinction available on the listing
+// itself, so this is caught by make rather than downstream like the
+// motorcycle body type is.
+const NON_VEHICLE_MAKES = new Set(["Factory Built", "Trailer"]);
+
+export function isNonVehicleListing(make: string): boolean {
+  return NON_VEHICLE_MAKES.has(make);
+}
+
+// Makes that build motorcycles/e-scooters/mopeds exclusively — a listing
+// from one of these needs no body-type guess from free text at all. Added
+// after a Horwin EK1 (an e-scooter) slipped past the "include motorcycles"
+// filter on EV City: that dealer's Body field on the listing was blank, so
+// normalizeBodyType() never saw a "scooter"/"motorbike" word to match and
+// the listing shipped with bodyType null, which read as "not a motorcycle"
+// to the filter (src/lib/search/listings.ts's `is distinct from`). Same
+// blank-field failure mode will recur for any other single-category-product
+// brand a dealer lists without filling in Body, so this is checked by make
+// as a fallback wherever normalizeBodyType comes back empty, rather than
+// patching this one brand's listings after the fact.
+const MOTORCYCLE_ONLY_MAKES = new Set(["Horwin"]);
+
+/** Fallback for when the dealer's own body-type field is blank/unrecognized
+ * (see MOTORCYCLE_ONLY_MAKES above) — only ever narrows an unknown body type,
+ * never overrides one normalizeBodyType() already recognized. */
+export function inferBodyTypeFromMake(make: string): string | undefined {
+  return MOTORCYCLE_ONLY_MAKES.has(make) ? "motorcycle" : undefined;
+}
+
 export function parsePrice(rawPrice: string): number | undefined {
   // Some dealer platforms embed markup in what's otherwise a "price" field
   // for discounted listings, e.g. CarUpdater's data-price attribute:

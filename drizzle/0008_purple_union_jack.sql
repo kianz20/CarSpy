@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ALTER COLUMN "ownership_years" SET DEFAULT 1;

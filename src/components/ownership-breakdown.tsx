@@ -93,6 +93,8 @@ export function OwnershipBreakdown({
       : `the default assumption of ${DEFAULT_DEPOSIT_FRACTION * 100}% down (${formatCurrency(depositAmount)})`;
   const currentYear = new Date().getFullYear();
   const ageYears = year ? Math.max(currentYear - year, 0) : undefined;
+  const isMultiYear = breakdown.ownershipYears > 1;
+  const ownershipYearsLabel = `${breakdown.ownershipYears} year${isMultiYear ? "s" : ""}`;
 
   // --- Servicing sub-items ---
   const serviceHours =
@@ -190,7 +192,7 @@ export function OwnershipBreakdown({
           {
             label: "Finance interest",
             amount: breakdown.financeInterest,
-            explanation: `Interest on a ${formatCurrency(breakdown.loanAmount)} loan (price minus ${depositLabel}) over ${breakdown.ownershipYears} years of a ${DEFAULT_LOAN_TERM_MONTHS}-month term at ${(DEFAULT_FINANCE_APR * 100).toFixed(1)}% p.a.`,
+            explanation: `Interest on a ${formatCurrency(breakdown.loanAmount)} loan (price minus ${depositLabel})${isMultiYear ? ` over ${ownershipYearsLabel}` : ""} of a ${DEFAULT_LOAN_TERM_MONTHS}-month term at ${(DEFAULT_FINANCE_APR * 100).toFixed(1)}% p.a.`,
           },
         ]),
     {
@@ -206,7 +208,9 @@ export function OwnershipBreakdown({
         // "180kW"), where no adjustment was actually applied.
         const engineMatch = !consumption.kwhPer100Km ? engine?.match(/(\d+)\s*cc/i) : undefined;
         const bullets = [
-          `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${breakdown.ownershipYears} years)`,
+          isMultiYear
+            ? `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${ownershipYearsLabel})`
+            : `Based on ${formatNumber(effectiveAnnualKm)} km/year`,
           `Estimated at ${consumptionText} for this body type/powertrain`,
           ...(engineMatch ? [`Adjusted for its ${(Number(engineMatch[1]) / 1000).toFixed(1)}L engine`] : []),
           // Petrol/hybrid pay for road funding via fuel excise at the pump
@@ -225,13 +229,13 @@ export function OwnershipBreakdown({
     {
       label: "Servicing",
       amount: breakdown.servicing,
-      explanation: `Per-year breakdown below (scheduled visits, oil & filter, tyres and brakes — the last three wear by distance driven, not just calendar time) × ${breakdown.ownershipYears} years.`,
+      explanation: `Per-year breakdown below (scheduled visits, oil & filter, tyres and brakes — the last three wear by distance driven, not just calendar time)${isMultiYear ? ` × ${ownershipYearsLabel}` : ""}.`,
       subItems: servicingSubItems,
     },
     {
       label: "Registration & WOF",
       amount: breakdown.licensing,
-      explanation: `Vehicle license (~${formatCurrency(annualRegoFee)}/year${powertrain === "diesel" || powertrain === "ev" ? " — diesel/EV pay more here since their ACC levy isn't collected via fuel excise like petrol's is" : ""}) plus an annual WOF at ~${formatCurrency(WOF_INSPECTION_COST)}, over ${breakdown.ownershipYears} years.`,
+      explanation: `Vehicle license (~${formatCurrency(annualRegoFee)}/year${powertrain === "diesel" || powertrain === "ev" ? " — diesel/EV pay more here since their ACC levy isn't collected via fuel excise like petrol's is" : ""}) plus an annual WOF at ~${formatCurrency(WOF_INSPECTION_COST)}${isMultiYear ? `, over ${ownershipYearsLabel}` : ""}.`,
     },
     {
       label: "Insurance",
@@ -240,8 +244,8 @@ export function OwnershipBreakdown({
         breakdown.insuranceCoverType === "none"
           ? "Going uninsured is legal in NZ, but leaves you covering this car's own repair/replacement cost and any at-fault liability yourself."
           : breakdown.insuranceCoverType === "third_party_fire_theft"
-            ? `Scaled from an average NZ Third Party, Fire & Theft premium (${formatCurrency(AVERAGE_ANNUAL_TPFT_PREMIUM * 3)} for 3 years) against this listing's ${formatCurrency(price)} price, over ${breakdown.ownershipYears} years.`
-            : `Scaled from the NZ average comprehensive premium (${formatCurrency(AVERAGE_ANNUAL_COMPREHENSIVE_PREMIUM * 3)} for 3 years) against this listing's ${formatCurrency(price)} price, over ${breakdown.ownershipYears} years.`,
+            ? `Scaled from an average NZ Third Party, Fire & Theft premium (${formatCurrency(AVERAGE_ANNUAL_TPFT_PREMIUM)}/year) against this listing's ${formatCurrency(price)} price${isMultiYear ? `, over ${ownershipYearsLabel}` : ""}.`
+            : `Scaled from the NZ average comprehensive premium (${formatCurrency(AVERAGE_ANNUAL_COMPREHENSIVE_PREMIUM)}/year) against this listing's ${formatCurrency(price)} price${isMultiYear ? `, over ${ownershipYearsLabel}` : ""}.`,
       headerExtra: (
         <InsuranceCoverToggle
           coverType={breakdown.insuranceCoverType}
@@ -262,7 +266,7 @@ export function OwnershipBreakdown({
     {
       label: "Unscheduled repairs",
       amount: breakdown.repairs,
-      explanation: `An estimate by vehicle age${ageYears !== undefined ? ` (${ageYears} years old)` : " (age unknown, assumed mid-age)"} and a brand-tier multiplier (budget-reliable/mainstream/premium/exotic) for ${make}, over ${breakdown.ownershipYears} years.${mileageText}`,
+      explanation: `An estimate by vehicle age${ageYears !== undefined ? ` (${ageYears} years old)` : " (age unknown, assumed mid-age)"} and a brand-tier multiplier (budget-reliable/mainstream/premium/exotic) for ${make}${isMultiYear ? `, over ${ownershipYearsLabel}` : ""}.${mileageText}`,
     },
   ];
 
@@ -307,7 +311,9 @@ export function OwnershipBreakdown({
       ))}
       <div className="flex items-baseline justify-between border-t border-border pt-3">
         <span className="text-sm font-semibold">
-          Total {breakdown.ownershipYears}-year ownership cost
+          {breakdown.ownershipYears === 1
+            ? "Total annual maintenance cost"
+            : `Total ${breakdown.ownershipYears}-year ownership cost`}
         </span>
         <span className="text-lg font-extrabold accent-gradient-text">
           {formatCurrency(breakdown.total)}

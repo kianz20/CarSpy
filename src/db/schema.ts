@@ -174,7 +174,7 @@ export const userSettings = pgTable("user_settings", {
   userId: integer("user_id")
     .primaryKey()
     .references(() => users.id),
-  ownershipYears: integer("ownership_years").notNull().default(3),
+  ownershipYears: integer("ownership_years").notNull().default(1),
   annualKm: integer("annual_km").notNull().default(12000),
   financeEnabled: boolean("finance_enabled").notNull().default(false),
   deposit: numeric("deposit", { precision: 10, scale: 2 }),
