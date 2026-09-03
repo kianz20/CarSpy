@@ -274,29 +274,29 @@ export function OwnershipBreakdown({
           className="rounded-lg border border-border bg-surface-2/60 p-3"
         >
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-sm font-semibold">{row.label}</span>
-            <span className="text-sm font-bold">
+            <span className="text-base font-semibold">{row.label}</span>
+            <span className="text-base font-bold">
               {formatCurrency(row.amount)}
             </span>
           </div>
           {row.headerExtra && <div className="mt-2">{row.headerExtra}</div>}
-          <div className="mt-1 text-xs text-muted">
+          <div className="mt-1 text-sm text-muted">
             {row.explanation}
           </div>
           {row.subItems && (
             <div className="mt-2 flex flex-col gap-2 border-t border-border pt-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted/80">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted/80">
                 Per year
               </span>
               {row.subItems.map((sub) => (
                 <div key={sub.label} className="pl-3">
                   <div className="flex items-baseline justify-between gap-4">
-                    <span className="text-xs font-medium">{sub.label}</span>
-                    <span className="text-xs font-semibold">
+                    <span className="text-sm font-medium">{sub.label}</span>
+                    <span className="text-sm font-semibold">
                       {formatCurrency(sub.amount)}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted">
+                  <p className="mt-0.5 text-xs text-muted">
                     {sub.explanation}
                   </p>
                 </div>
