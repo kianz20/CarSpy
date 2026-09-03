@@ -15,11 +15,15 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:dealers": "tsx src/db/seedDealers.ts",
+    "db:seed:model-descriptions": "tsx src/db/seedAdditionalModelDescriptions.ts",
+    "db:seed:batch2-model-descriptions": "tsx src/db/seedBatch2ModelDescriptions.ts",
     "crawl": "tsx src/crawler/run.ts",
     "crawl:backfill-body-type": "tsx src/crawler/backfillBodyType.ts",
     "crawl:backfill-make-casing": "tsx src/crawler/backfillMakeCasing.ts",
     "crawl:backfill-industry-motors-images": "tsx src/crawler/backfillIndustryMotorsImages.ts",
-    "crawl:backfill-auto-legend-images": "tsx src/crawler/backfillAutoLegendImages.ts"
+    "crawl:backfill-auto-legend-images": "tsx src/crawler/backfillAutoLegendImages.ts",
+    "crawl:backfill-motorcycle-from-engine": "tsx src/crawler/backfillMotorcycleFromEngine.ts",
+    "db:find-missing-descriptions": "tsx src/crawler/findTrulyMissingModels.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
