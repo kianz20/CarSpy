@@ -355,14 +355,16 @@ export type SimilarListingStats = {
 // keeps the comparison to roughly the same generation/age bracket.
 const SIMILAR_LISTING_YEAR_RANGE = 3;
 
-/** Aggregate stats for other active listings of the same make+model within
- * ±3 years (not this one), for the listing detail page's "How this listing
- * compares" section. Returns undefined when there's nothing to compare
- * against. */
+/** Aggregate stats for active listings of the same make+model within ±3
+ * years, including this listing itself, for the listing detail page's "How
+ * this listing compares" section. Including it means a listing with no
+ * other comparables still gets a non-degenerate min/avg/max (itself), rather
+ * than an undefined/empty comparison. Returns undefined when there's nothing
+ * to compare against (shouldn't happen given the listing itself always
+ * matches, but guards a missing/mismatched id). */
 export async function getSimilarListingStats(
   make: string,
   model: string,
-  excludeListingId: number,
   year?: number,
 ): Promise<SimilarListingStats | undefined> {
   const [row] = await db
@@ -381,7 +383,6 @@ export async function getSimilarListingStats(
         eq(listings.make, make),
         eq(listings.model, model),
         eq(listings.status, "active"),
-        sql`${listings.id} != ${excludeListingId}`,
         // Only constrain by age when this listing's own year is known —
         // nothing to center a ±3-year window on otherwise.
         year !== undefined ? gte(listings.year, year - SIMILAR_LISTING_YEAR_RANGE) : undefined,

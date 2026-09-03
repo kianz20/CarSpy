@@ -57,7 +57,7 @@ export default async function ListingDetailPage({
     getVehicleModelDescription(listing.make, listing.model),
     getCurrentUser(),
     getFirstSeenPrices([listing.id]),
-    getSimilarListingStats(listing.make, listing.model, listing.id, listing.year ?? undefined),
+    getSimilarListingStats(listing.make, listing.model, listing.year ?? undefined),
     getEffectiveDefaults(),
   ]);
   const isWatchlisted = currentUser ? await isListingWatchlisted(currentUser.id, listing.id) : undefined;
@@ -257,6 +257,8 @@ export default async function ListingDetailPage({
                 <div className="flex flex-col gap-5">
                   <DistributionBar
                     label="Price"
+                    metric="price"
+                    model={`${listing.make} ${listing.model}`}
                     min={similarStats.minPrice}
                     max={similarStats.maxPrice}
                     avg={similarStats.avgPrice}
@@ -265,11 +267,14 @@ export default async function ListingDetailPage({
                     maxFormatted={formatCurrency(similarStats.maxPrice)}
                     avgFormatted={formatCurrency(similarStats.avgPrice)}
                     currentFormatted={formatCurrency(price)}
+                    count={similarStats.count}
                   />
 
                   {listing.mileageKm !== null && similarStats.minMileageKm !== null && similarStats.maxMileageKm !== null && (
                     <DistributionBar
                       label="Mileage"
+                      metric="mileage"
+                      model={`${listing.make} ${listing.model}`}
                       min={similarStats.minMileageKm}
                       max={similarStats.maxMileageKm}
                       avg={similarStats.avgMileageKm ?? similarStats.minMileageKm}
@@ -278,6 +283,7 @@ export default async function ListingDetailPage({
                       maxFormatted={`${formatNumber(Math.round(similarStats.maxMileageKm))} km`}
                       avgFormatted={`${formatNumber(Math.round(similarStats.avgMileageKm ?? similarStats.minMileageKm))} km`}
                       currentFormatted={`${formatNumber(Math.round(listing.mileageKm))} km`}
+                      count={similarStats.count}
                     />
                   )}
 

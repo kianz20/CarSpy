@@ -1,20 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { submitFeedbackAction, type SubmitFeedbackState } from "@/lib/actions/feedback";
-
-const initialState: SubmitFeedbackState = {};
+import { useEffect, useRef, useState } from "react";
+import { FeedbackForm } from "@/components/feedback-form";
 
 /**
  * Fixed to the viewport corner rather than laid out inside the header's own
  * flex row — the ask was specifically to keep it "outside of the main page
  * borders" so it can never push the logo/AuthNav/ThemeToggle around, even
- * though visually it sits right beside the theme toggle.
+ * though visually it sits right beside the theme toggle. Hidden below `sm`
+ * — that's the same top-right corner AuthNav/Settings need on mobile, so it
+ * folds into MobileNavMenu's "Send feedback" item there instead.
  */
 export function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
-  const [state, formAction, pending] = useActionState(submitFeedbackAction, initialState);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,12 +24,6 @@ export function FeedbackButton() {
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
-
-  useEffect(() => {
-    if (!state.success) return;
-    const timeout = setTimeout(() => setOpen(false), 1800);
-    return () => clearTimeout(timeout);
-  }, [state.success]);
 
   function handleToggle() {
     setOpen((wasOpen) => {
@@ -43,7 +36,7 @@ export function FeedbackButton() {
   }
 
   return (
-    <div ref={rootRef} className="fixed right-4 top-2.5 z-30">
+    <div ref={rootRef} className="fixed right-4 top-2.5 z-30 hidden sm:block">
       <button
         type="button"
         onClick={handleToggle}
@@ -62,28 +55,7 @@ export function FeedbackButton() {
 
       {open && (
         <div className="absolute right-0 mt-2 w-72 rounded-xl border border-border bg-surface p-4 shadow-lg">
-          {state.success ? (
-            <p className="py-2 text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              Thanks — feedback sent!
-            </p>
-          ) : (
-            <form action={formAction} className="flex flex-col gap-2">
-              <span className="text-xs font-semibold text-muted">Send feedback</span>
-              <textarea
-                name="message"
-                required
-                rows={4}
-                placeholder="Bugs, ideas, anything…"
-                className="field text-sm"
-              />
-              <input type="email" name="email" placeholder="Email (optional, for a reply)" className="field text-sm" />
-              <input type="hidden" name="pageUrl" value={pageUrl} readOnly />
-              {state.error && <p className="text-xs font-medium text-red-500">{state.error}</p>}
-              <button type="submit" disabled={pending} className="btn btn-primary py-1.5 text-sm">
-                {pending ? "Sending…" : "Send"}
-              </button>
-            </form>
-          )}
+          <FeedbackForm pageUrl={pageUrl} onSent={() => setOpen(false)} />
         </div>
       )}
     </div>

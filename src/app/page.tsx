@@ -235,15 +235,19 @@ export default async function Home({
       ) : (
         <div className="lg:grid lg:grid-cols-[320px_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8 xl:grid-cols-[320px_1fr_260px]">
           <aside className="relative mb-6 lg:sticky lg:top-20 lg:col-start-1 lg:row-start-2 lg:mb-0">
-            {/* Absolutely positioned above the filter box (not pushed into
-                flow above it) — the box itself stays exactly where it was.
-                Right-aligned against the box, not the results column.
+            {/* At lg+, absolutely positioned above the filter box (not
+                pushed into flow above it) — the box itself stays exactly
+                where it was. Right-aligned against the box, not the results
+                column. Below lg, the aside isn't sticky/offset from the top
+                the way it is at lg, so the same -41px trick would land
+                Back underneath the sticky header instead — normal flow
+                there, just pushing the card down by its own height.
                 Returns to the wide, pre-search filter layout; Clear filters
                 (below, in the form) deliberately doesn't do this anymore —
                 it just resets which listings match while staying here. */}
             <Link
               href={getBackHref(params)}
-              className="absolute -top-[41px] right-0 flex items-center gap-1 text-sm text-muted hover:text-accent"
+              className="mb-2 flex items-center gap-1 text-sm text-muted hover:text-accent lg:absolute lg:-top-[41px] lg:right-0 lg:mb-0"
             >
               <span aria-hidden="true">←</span> Back
             </Link>

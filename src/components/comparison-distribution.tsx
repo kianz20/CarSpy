@@ -4,6 +4,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 type DistributionBarProps = {
   label: string;
+  /** Which metric this bar shows — picks the wording for the cheapest/most
+   * expensive vs lowest/highest mileage edge-case sentences. */
+  metric: "price" | "mileage";
+  /** Make + model shown in the edge-case sentences, e.g. "Toyota Corolla". */
+  model: string;
   min: number;
   max: number;
   avg: number;
@@ -12,10 +17,16 @@ type DistributionBarProps = {
   avgFormatted: string;
   minFormatted: string;
   maxFormatted: string;
+  /** Number of similar listings the min/avg/max were computed from. With
+   * only one, min/avg/max are all the same value, which makes both the
+   * "% through the range" and "% above/below average" figures meaningless. */
+  count: number;
 };
 
 export function DistributionBar({
   label,
+  metric,
+  model,
   min,
   max,
   avg,
@@ -24,9 +35,13 @@ export function DistributionBar({
   avgFormatted,
   minFormatted,
   maxFormatted,
+  count,
 }: DistributionBarProps) {
   const isBelow = current < avg;
   const isAbove = current > avg;
+  const hasRange = max > min;
+  const isCheapestOrLowest = hasRange && current === min;
+  const isMostExpensiveOrHighest = hasRange && current === max;
 
   // Simple data for visualization - show the range with key points
   const data = [
@@ -77,7 +92,7 @@ export function DistributionBar({
             <YAxis
               tick={{ fontSize: 12 }}
               width={60}
-              domain={[min, max]}
+              domain={[Math.min(min, current), Math.max(max, current)]}
               tickFormatter={(value) => {
                 if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
                 if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}K`;
@@ -142,7 +157,27 @@ export function DistributionBar({
       {/* Status indicator */}
       <div className="flex items-center justify-between gap-4 pt-4 pb-1 border-t border-border/30">
         <div className="text-sm text-muted">
-          You are <span className="font-semibold">{((current - min) / (max - min) * 100).toFixed(0)}%</span> of the way through the range
+          {isCheapestOrLowest ? (
+            metric === "price" ? (
+              <>This is the cheapest {model} being sold</>
+            ) : (
+              <>This is the lowest mileage {model} being sold</>
+            )
+          ) : isMostExpensiveOrHighest ? (
+            metric === "price" ? (
+              <>This is the most expensive {model} being sold</>
+            ) : (
+              <>This is the highest mileage {model} being sold</>
+            )
+          ) : hasRange ? (
+            <>
+              You are <span className="font-semibold">{Math.min(100, Math.max(0, ((current - min) / (max - min)) * 100)).toFixed(0)}%</span> of the way through the range
+            </>
+          ) : count > 1 ? (
+            <>Based on {count - 1} other similar {count - 1 === 1 ? "listing" : "listings"}, all at {avgFormatted}</>
+          ) : (
+            <>No other similar listings to compare against yet</>
+          )}
         </div>
         <div
           className={`flex items-center gap-2 rounded-full px-3 py-1 font-semibold text-sm self-center ${
