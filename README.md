@@ -17,12 +17,24 @@ powertrain, age), not professional valuations or financial advice.
 - **3-year ownership cost estimate** per listing — finance interest, fuel/
   electricity + road user charges (adjusted for engine size where known),
   servicing, insurance, repairs, and registration/WOF — with an itemized,
-  expandable breakdown and an adjustable 1–5 year horizon slider
+  expandable breakdown, a distribution chart comparing it against similar
+  listings, and an adjustable 1–5 year horizon slider
 - **Sort** by total cost, asking price, or mileage, with real pagination
 - **Real listing photos**, scraped per-dealer, falling back to a stock
   make/model/year photo when unavailable
 - Mileage-bracket average pricing (low/medium/high km) computed from the
   current search's own results
+- **Accounts** — sign up/log in, a **watchlist** to save listings, and a
+  **Settings** page for theme and saved ownership-cost defaults
+  (annual km, finance on/off, deposit) that pre-fill future searches;
+  logged-out visitors get the same defaults via a cookie
+- **Pre-search home page** teasers: a "recent price drops" list and a
+  "popular searches" quick-link box (currently a static seed list — see
+  `search_log` below), plus a headline count of vehicles/dealers searched
+- Every real search is logged to a `search_log` table (skipped for admin
+  accounts) for a future data-driven popular-searches query
+- **Feedback button** for any visitor, with an admin-only inbox and
+  unread-count badge in the nav
 
 See [PLAN.md](./PLAN.md) for the full design rationale and build phases.
 
@@ -31,7 +43,9 @@ See [PLAN.md](./PLAN.md) for the full design rationale and build phases.
 - **Next.js** (App Router) + React + TypeScript
 - **Postgres** via [Neon](https://neon.tech), queried with
   [Drizzle ORM](https://orm.drizzle.team)
-- **Tailwind CSS**
+- **Tailwind CSS**, charts via [Recharts](https://recharts.org)
+- DB-backed sessions (opaque token cookie, no JWT) with `bcryptjs` password
+  hashing — no third-party auth provider
 - A custom crawler (Cheerio-based, no headless browser) with a
   per-platform adapter for each dealer-site template (Motorcentral,
   AdTorque Edge, CarUpdater, Turners, 2 Cheap Cars, Armstrong's)
@@ -101,6 +115,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:seed:dealers` | Seed the list of dealers to crawl |
 | `npm run crawl` | Crawl all active dealers |
 | `npm run crawl:backfill-body-type` | Re-check body type for listings that came back unclassified on first crawl |
+| `npm run crawl:backfill-make-casing` | Normalize inconsistent make casing on existing listings |
+| `npm run crawl:backfill-industry-motors-images` | Backfill images for Industry Motors listings scraped before image support was added |
 
 ## Scheduled crawling
 
