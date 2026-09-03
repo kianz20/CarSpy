@@ -180,3 +180,18 @@ export const userSettings = pgTable("user_settings", {
   deposit: numeric("deposit", { precision: 10, scale: 2 }),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// Search log for a future "popular searches" query (see
+// popular-search-chips.tsx's static seed list, which this is meant to
+// eventually replace). userId is nullable — logged-out visitors are
+// captured too, keyed on nothing. Admin searches are deliberately never
+// inserted here (see logSearch in lib/searchAnalytics.ts) so testing/QA
+// browsing doesn't skew what counts as "popular".
+export const searchLog = pgTable("search_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  filters: jsonb("filters").notNull(),
+  sort: text("sort").notNull(),
+  resultCount: integer("result_count").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

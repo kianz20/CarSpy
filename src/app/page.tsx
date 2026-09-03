@@ -5,6 +5,8 @@ import {
   getDistinctMakes,
   getDistinctRegions,
   getFirstSeenPrices,
+  getRecentPriceDrops,
+  getInventoryStats,
   type ListingSearchFilters,
   type ListingSort,
 } from "@/lib/search/listings";
@@ -15,6 +17,8 @@ import {
   type InsuranceCoverType,
 } from "@/lib/ownership";
 import { SearchForm } from "@/components/search-form";
+import { RecentPriceDrops } from "@/components/recent-price-drops";
+import { PopularSearchChips } from "@/components/popular-search-chips";
 import { MileageStatsBar } from "@/components/mileage-stats-bar";
 import { SortSelect } from "@/components/sort-select";
 import { Pagination } from "@/components/pagination";
@@ -23,6 +27,8 @@ import { AnimatedList } from "@/components/animated-list";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getWatchlistedListingIds } from "@/lib/watchlist";
 import { parseListParam } from "@/lib/listParams";
+import { getEffectiveDefaults } from "@/lib/settings";
+import { logSearch } from "@/lib/searchAnalytics";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -34,6 +40,14 @@ function toNumber(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const n = Number(value);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function getBackHref(params: SearchParams): string {
+  // If we came from a listing detail page, go back there
+  const backParam = first(params.back);
+  if (backParam) return decodeURIComponent(backParam);
+  // Otherwise go to the main search page
+  return "/";
 }
 
 export default async function Home({
@@ -67,20 +81,16 @@ export default async function Home({
     if (value) current[key] = value;
   }
 
-  const deposit = toNumber(current.deposit);
-  const annualKm = toNumber(current.annualKm);
   const insuranceCoverType: InsuranceCoverType | undefined =
     current.insuranceCoverType === "third_party_fire_theft" ||
     current.insuranceCoverType === "none"
       ? current.insuranceCoverType
       : undefined;
-  // Financing defaults to off — the search form's checkbox pairs it with a
-  // hidden fallback input so a submission always round-trips an explicit
-  // "true" or "false" (a checkbox that's merely absent from the form data
-  // can't be told apart from "never touched"). That presence is also what
-  // distinguishes "the user actually submitted a search" from a bare first
-  // visit to "/", so it still gates the real, DB-hitting search below.
-  const financeEnabled = current.financeEnabled === "true";
+  // `hasSearched` stays keyed on the *literal* URL param, not the resolved
+  // default below — it's what distinguishes "the user actually submitted a
+  // search" (financeEnabled always round-trips explicitly once submitted,
+  // see search-form.tsx's hidden-fallback comment) from a bare first visit,
+  // regardless of what their saved settings say.
   const hasSearched = current.financeEnabled !== undefined;
   const sort: ListingSort =
     current.sort === "price" || current.sort === "mileage" ? current.sort : "total";
@@ -101,20 +111,31 @@ export default async function Home({
     includeMotorcycles: current.includeMotorcycles === "true",
   };
 
-  // Finance off means no loan is modeled at all — depositFraction: 1 forces
-  // loanAmount (and so financeInterest) to $0 for every listing, and no
-  // price-based filtering is applied beyond the existing min/max price
-  // fields (deposit isn't a spending cap here, just a finance input).
-  const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
-
-  const [bodyTypes, powertrains, makes, regions, currentUser] = await Promise.all([
+  const [bodyTypes, powertrains, makes, regions, currentUser, defaults, inventoryStats] = await Promise.all([
     getCategoryOptions("body_type"),
     getCategoryOptions("powertrain"),
     getDistinctMakes(),
     getDistinctRegions(),
     getCurrentUser(),
+    getEffectiveDefaults(),
+    getInventoryStats(),
   ]);
   const watchlistedIds = currentUser ? await getWatchlistedListingIds(currentUser.id) : undefined;
+
+  // Falls back to the user's saved settings only when the URL doesn't
+  // already say — a submitted search always carries explicit financeEnabled/
+  // annualKm (see hasSearched above), so this mainly matters for a listing
+  // link opened with no search params at all, or the pre-search form's own
+  // initial values (see the `current.x ?? String(defaults.x)` below).
+  const deposit = toNumber(current.deposit) ?? defaults.deposit;
+  const annualKm = toNumber(current.annualKm) ?? defaults.annualKm;
+  const financeEnabled = current.financeEnabled !== undefined ? current.financeEnabled === "true" : defaults.financeEnabled;
+
+  // Finance off means no loan is modeled at all — depositFraction: 1 forces
+  // loanAmount (and so financeInterest) to $0 for every listing, and no
+  // price-based filtering is applied beyond the existing min/max price
+  // fields (deposit isn't a spending cap here, just a finance input).
+  const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
   let listingsData: ListingCardData[] = [];
   let totalCount = 0;
@@ -124,7 +145,12 @@ export default async function Home({
 
   if (hasSearched) {
     const [searchResult, stats] = await Promise.all([
-      searchListings(filters, sort, { ...financeOptions, annualKm, insuranceCoverType }, page),
+      searchListings(
+        filters,
+        sort,
+        { ...financeOptions, annualKm, insuranceCoverType, ownershipYears: defaults.ownershipYears },
+        page,
+      ),
       getMileageBracketStats(filters),
     ]);
     totalCount = searchResult.totalCount;
@@ -149,37 +175,62 @@ export default async function Home({
       dealerRegion: row.dealers.region,
       imageUrl: row.listings.imageUrl,
     }));
+    await logSearch(filters, sort, totalCount, currentUser);
   }
 
   const firstSeenPrices = await getFirstSeenPrices(listingsData.map((l) => l.id));
+  // Only worth fetching for the pre-search page — once there are real
+  // results, the price-drop badges on those cards already cover this.
+  const recentPriceDrops = hasSearched ? [] : await getRecentPriceDrops(6);
 
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <header className="mb-6 flex flex-col gap-2 lg:mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          Find your next <span className="accent-gradient-text">car</span>
-        </h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Search NZ dealer inventory nationwide and compare asking prices against the real
-          3-year cost of owning each one — finance, fuel, servicing, insurance and repairs
-          included.
-        </p>
-      </header>
+      {!hasSearched && (
+        <header className="mb-6 flex flex-col gap-2 lg:mb-8">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Find your next <span className="accent-gradient-text">car</span>
+          </h1>
+          <p className="max-w-2xl text-sm text-muted">
+            Search NZ dealer inventory nationwide and compare asking prices against the real
+            3-year cost of owning each one — finance, fuel, servicing, insurance and repairs
+            included.
+          </p>
+          <p className="text-xs font-medium text-muted">
+            Searching <span className="text-foreground">{inventoryStats.listingCount.toLocaleString()}</span>{" "}
+            vehicles across <span className="text-foreground">{inventoryStats.dealerCount.toLocaleString()}</span>{" "}
+            dealers
+          </p>
+        </header>
+      )}
 
       {!hasSearched ? (
         // Before the first search, the filter form is the whole point of the
         // page — give it the width a cramped 320px sidebar can't, instead of
-        // burying it next to an empty results area.
-        <div className="mx-auto w-full max-w-4xl">
-          <div className="card p-6 sm:p-8">
+        // burying it next to an empty results area. The price-drops teaser
+        // sits to its right when there's anything to show, so the page isn't
+        // just an empty form on a first visit — same max-w-4xl form width
+        // either way, just widening the overall container to make room.
+        <div
+          className={`mx-auto w-full ${recentPriceDrops.length > 0 ? "max-w-7xl lg:grid lg:grid-cols-[240px_1fr_280px] lg:items-start lg:gap-8" : "max-w-6xl lg:grid lg:grid-cols-[240px_1fr] lg:items-start lg:gap-8"}`}
+        >
+          <div className="order-2 mt-6 lg:order-1 lg:mt-0">
+            <PopularSearchChips financeEnabled={defaults.financeEnabled} />
+          </div>
+          <div className="card order-1 p-6 sm:p-8 lg:order-2">
             <SearchForm
               bodyTypes={bodyTypes}
               powertrains={powertrains}
               makes={makes}
               regions={regions}
               current={current}
+              defaults={defaults}
             />
           </div>
+          {recentPriceDrops.length > 0 && (
+            <div className="order-3 mt-6 lg:mt-0">
+              <RecentPriceDrops drops={recentPriceDrops} />
+            </div>
+          )}
         </div>
       ) : (
         <div className="lg:grid lg:grid-cols-[320px_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8 xl:grid-cols-[320px_1fr_260px]">
@@ -191,7 +242,7 @@ export default async function Home({
                 (below, in the form) deliberately doesn't do this anymore —
                 it just resets which listings match while staying here. */}
             <Link
-              href="/"
+              href={getBackHref(params)}
               className="absolute -top-[41px] right-0 flex items-center gap-1 text-sm text-muted hover:text-accent"
             >
               <span aria-hidden="true">←</span> Back
@@ -203,6 +254,7 @@ export default async function Home({
                 makes={makes}
                 regions={regions}
                 current={current}
+              defaults={defaults}
               />
             </div>
           </aside>
@@ -242,6 +294,10 @@ export default async function Home({
                     // so it has to reconstruct the full URL itself.
                     const detailParams = new URLSearchParams(current);
                     if (resolvedPage > 1) detailParams.set("page", String(resolvedPage));
+                    // Include the current search URL as the back parameter so users
+                    // can navigate back to these results from the listing detail page
+                    const backSearchUrl = `/?${detailParams.toString()}`;
+                    detailParams.set("back", backSearchUrl);
                     const detailHref = `/listing/${listing.id}${detailParams.size > 0 ? `?${detailParams.toString()}` : ""}`;
 
                     return (
@@ -261,7 +317,7 @@ export default async function Home({
                             price: listing.price,
                             mileageKm: listing.mileageKm ?? undefined,
                           },
-                          { ...financeOptions, annualKm, insuranceCoverType },
+                          { ...financeOptions, annualKm, insuranceCoverType, ownershipYears: defaults.ownershipYears },
                         )}
                       />
                     );

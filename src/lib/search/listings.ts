@@ -44,6 +44,7 @@ export type TotalCostSortOptions = {
   financeOptions?: FinanceOptions;
   annualKm?: number;
   insuranceCoverType?: InsuranceCoverType;
+  ownershipYears?: number;
 };
 
 // A search with no filters at all matches every active listing (~9,000+ and
@@ -265,6 +266,142 @@ export async function getFirstSeenPrices(listingIds: number[]): Promise<Map<numb
   return new Map(rows.map((r) => [r.listingId, { price: parseFloat(r.price), observedAt: r.observedAt }]));
 }
 
+export type RecentPriceDrop = {
+  id: number;
+  make: string;
+  model: string;
+  year: number | null;
+  imageUrl: string | null;
+  price: number;
+  previousPrice: number;
+  droppedAt: Date;
+};
+
+/** Active listings whose most recent price_history entry is a genuine
+ * decrease from the one before it, newest drop first — for the "recent
+ * price drops" teaser on the pre-search home page. Needs a window function
+ * (compare each listing's latest observed price to its second-latest) that
+ * drizzle's query builder has no shorthand for, hence the raw SQL. Also
+ * dedupes to one listing per make/model so the teaser doesn't fill up with
+ * near-identical Yaris listings. */
+export async function getRecentPriceDrops(limit: number): Promise<RecentPriceDrop[]> {
+  const rows = await db.execute<{
+    id: number;
+    make: string;
+    model: string;
+    year: number | null;
+    image_url: string | null;
+    current_price: string;
+    previous_price: string;
+    dropped_at: Date;
+  }>(sql`
+    with ranked as (
+      select
+        listing_id,
+        price,
+        observed_at,
+        row_number() over (partition by listing_id order by observed_at desc) as rn
+      from ${listingPriceHistory}
+    ),
+    drops as (
+      select
+        l.id, l.make, l.model, l.year, l.image_url,
+        latest.price as current_price,
+        previous.price as previous_price,
+        latest.observed_at as dropped_at
+      from ranked latest
+      join ranked previous on previous.listing_id = latest.listing_id and previous.rn = 2
+      join ${listings} l on l.id = latest.listing_id
+      where latest.rn = 1
+        and previous.price::numeric > latest.price::numeric
+        and l.status = 'active'
+    ),
+    deduped as (
+      select *,
+        row_number() over (partition by make, model order by dropped_at desc) as model_rn
+      from drops
+    )
+    select id, make, model, year, image_url, current_price, previous_price, dropped_at
+    from deduped
+    where model_rn = 1
+    order by dropped_at desc
+    limit ${limit}
+  `);
+
+  return rows.map((r) => ({
+    id: r.id,
+    make: r.make,
+    model: r.model,
+    year: r.year,
+    imageUrl: r.image_url,
+    price: parseFloat(r.current_price),
+    previousPrice: parseFloat(r.previous_price),
+    droppedAt: r.dropped_at,
+  }));
+}
+
+export type SimilarListingStats = {
+  count: number;
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  avgMileageKm: number | null;
+  minMileageKm: number | null;
+  maxMileageKm: number | null;
+};
+
+// A 15-year-old and a 2-year-old car with the same name aren't really
+// comparable (condition, tech, remaining life all differ hugely) — this
+// keeps the comparison to roughly the same generation/age bracket.
+const SIMILAR_LISTING_YEAR_RANGE = 3;
+
+/** Aggregate stats for other active listings of the same make+model within
+ * ±3 years (not this one), for the listing detail page's "How this listing
+ * compares" section. Returns undefined when there's nothing to compare
+ * against. */
+export async function getSimilarListingStats(
+  make: string,
+  model: string,
+  excludeListingId: number,
+  year?: number,
+): Promise<SimilarListingStats | undefined> {
+  const [row] = await db
+    .select({
+      count: count(),
+      avgPrice: sql<string>`avg(${listings.price})`,
+      minPrice: sql<string>`min(${listings.price})`,
+      maxPrice: sql<string>`max(${listings.price})`,
+      avgMileageKm: sql<string | null>`avg(${listings.mileageKm})`,
+      minMileageKm: sql<string | null>`min(${listings.mileageKm})`,
+      maxMileageKm: sql<string | null>`max(${listings.mileageKm})`,
+    })
+    .from(listings)
+    .where(
+      and(
+        eq(listings.make, make),
+        eq(listings.model, model),
+        eq(listings.status, "active"),
+        sql`${listings.id} != ${excludeListingId}`,
+        // Only constrain by age when this listing's own year is known —
+        // nothing to center a ±3-year window on otherwise.
+        year !== undefined ? gte(listings.year, year - SIMILAR_LISTING_YEAR_RANGE) : undefined,
+        year !== undefined ? lte(listings.year, year + SIMILAR_LISTING_YEAR_RANGE) : undefined,
+      ),
+    );
+
+  if (!row || row.count === 0) return undefined;
+
+  return {
+    count: row.count,
+    avgPrice: parseFloat(row.avgPrice),
+    minPrice: parseFloat(row.minPrice),
+    maxPrice: parseFloat(row.maxPrice),
+    avgMileageKm: row.avgMileageKm !== null ? parseFloat(row.avgMileageKm) : null,
+    minMileageKm: row.minMileageKm !== null ? parseFloat(row.minMileageKm) : null,
+    maxMileageKm: row.maxMileageKm !== null ? parseFloat(row.maxMileageKm) : null,
+  };
+}
+
 /** A single listing + its dealer, for the listing detail page. Returns
  * undefined if the id doesn't exist (any status — a delisted/unconfirmed
  * listing someone has a stale link to should still be viewable, just not
@@ -289,6 +426,28 @@ export async function getVehicleModelDescription(make: string, model: string) {
 /** Distinct makes across active listings, for the search form's Make dropdown
  * — not seeded taxonomy (PLAN.md Phase 2 decided make/model values come from
  * scraped data, not a static list) so this queries the live DB directly. */
+export type InventoryStats = {
+  listingCount: number;
+  dealerCount: number;
+};
+
+/** Headline counts for the pre-search home page ("search N vehicles across
+ * M dealers"). Active listings only, dealers with at least one active
+ * listing only — inactive dealers shouldn't inflate the number. */
+export async function getInventoryStats(): Promise<InventoryStats> {
+  const [row] = await db
+    .select({
+      listingCount: count(),
+      dealerCount: sql<number>`count(distinct ${listings.dealerId})`,
+    })
+    .from(listings)
+    .where(eq(listings.status, "active"));
+  return {
+    listingCount: row?.listingCount ?? 0,
+    dealerCount: Number(row?.dealerCount ?? 0),
+  };
+}
+
 export async function getDistinctMakes(): Promise<string[]> {
   const rows = await db
     .selectDistinct({ make: listings.make })
