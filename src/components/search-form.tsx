@@ -361,7 +361,7 @@ export function SearchForm({
         {financeEnabled && (
           <Field
             label="Deposit ($)"
-            hint="Required — used for the 3-year ownership cost estimate"
+            hint="Required — used for the ownership cost estimate"
             error={
               depositError
                 ? "Please enter a deposit before searching"

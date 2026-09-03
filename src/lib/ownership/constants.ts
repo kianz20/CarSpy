@@ -69,7 +69,7 @@ export const DEFAULT_ANNUAL_KM = 12000;
 export const DEFAULT_DEPOSIT_FRACTION = 0.2;
 export const DEFAULT_LOAN_TERM_MONTHS = 60;
 
-export const OWNERSHIP_PERIOD_YEARS = 3;
+export const OWNERSHIP_PERIOD_YEARS = 1;
 
 /** NZ annual vehicle license ("rego") fee, 12-month private light-passenger
  * rate, effective 1 July 2026 (NZTA fee schedule, confirmed via

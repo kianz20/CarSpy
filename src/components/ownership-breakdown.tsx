@@ -307,7 +307,9 @@ export function OwnershipBreakdown({
       ))}
       <div className="flex items-baseline justify-between border-t border-border pt-3">
         <span className="text-sm font-semibold">
-          Total {breakdown.ownershipYears}-year ownership cost
+          {breakdown.ownershipYears === 1
+            ? "Total annual maintenance cost"
+            : `Total ${breakdown.ownershipYears}-year ownership cost`}
         </span>
         <span className="text-lg font-extrabold accent-gradient-text">
           {formatCurrency(breakdown.total)}

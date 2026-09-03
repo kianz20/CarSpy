@@ -12,7 +12,7 @@ export type OwnershipDefaults = {
 };
 
 export const HARDCODED_DEFAULTS: OwnershipDefaults = {
-  ownershipYears: 3,
+  ownershipYears: 1,
   annualKm: 12000,
   financeEnabled: false,
 };

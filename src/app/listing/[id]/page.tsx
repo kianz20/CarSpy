@@ -228,7 +228,7 @@ export default async function ListingDetailPage({
         <aside className="mt-6 flex flex-col gap-3 lg:sticky lg:top-20 lg:mt-0">
           {similarStats ? (
             <ListingAccordions
-              ownershipTitle={`${ownershipCost.ownershipYears}-year ownership costs`}
+              ownershipTitle={ownershipCost.ownershipYears === 1 ? "Annual maintenance costs" : `${ownershipCost.ownershipYears}-year ownership costs`}
               ownershipPrice={<span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>}
               ownershipContent={
                 <OwnershipBreakdown
@@ -296,7 +296,7 @@ export default async function ListingDetailPage({
           ) : (
             <SmoothAccordion
               id="ownership-details"
-              title={<span>{ownershipCost.ownershipYears}-year ownership costs</span>}
+              title={<span>{ownershipCost.ownershipYears === 1 ? "Annual maintenance costs" : `${ownershipCost.ownershipYears}-year ownership costs`}</span>}
               rightContent={<span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>}
               isOpen={true}
             >

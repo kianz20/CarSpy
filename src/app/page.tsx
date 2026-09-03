@@ -192,7 +192,7 @@ export default async function Home({
           </h1>
           <p className="max-w-2xl text-sm text-muted">
             Search NZ dealer inventory nationwide and compare asking prices against the real
-            3-year cost of owning each one — finance, fuel, servicing, insurance and repairs
+            annual maintenance cost of each one — finance, fuel, servicing, insurance and repairs
             included.
           </p>
           <p className="text-xs font-medium text-muted">
