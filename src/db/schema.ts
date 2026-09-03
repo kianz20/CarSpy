@@ -119,9 +119,30 @@ export const users = pgTable(
     id: serial("id").primaryKey(),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
+    emailVerifiedAt: timestamp("email_verified_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [uniqueIndex("users_email_idx").on(table.email)],
+);
+
+// Single-use, expiring tokens shared by both flows that need one (email
+// verification, password reset) — same shape either way, so one table
+// instead of two near-identical ones. `purpose` keeps them from being
+// interchangeable (a verification token can't be replayed as a reset token).
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    token: text("token").notNull(),
+    purpose: text("purpose").notNull(), // 'email_verification' | 'password_reset'
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("auth_tokens_token_idx").on(table.token)],
 );
 
 // Opaque bearer token in an httpOnly cookie, validated against this table on

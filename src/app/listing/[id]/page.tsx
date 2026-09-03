@@ -145,6 +145,12 @@ export default async function ListingDetailPage({
 
       <div className="lg:grid lg:grid-cols-[1fr_700px] lg:items-start lg:gap-8">
         <main className="flex min-w-0 flex-col gap-6">
+          {listing.status !== "active" && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+              This listing hasn&apos;t been seen in a recent crawl — it may have been deleted or sold.
+            </div>
+          )}
+
           <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
