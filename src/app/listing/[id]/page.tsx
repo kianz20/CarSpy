@@ -1,9 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getListingById, getVehicleModelDescription, getFirstSeenPrices } from "@/lib/search/listings";
+import {
+  getListingById,
+  getVehicleModelDescription,
+  getFirstSeenPrices,
+  getSimilarListingStats,
+} from "@/lib/search/listings";
 import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
-import { OwnershipYearsSlider } from "@/components/ownership-years-slider";
+import { getEffectiveDefaults } from "@/lib/settings";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
 import { formatCurrency, formatEngine, formatNumber } from "@/lib/format";
@@ -12,6 +17,9 @@ import { isListingWatchlisted } from "@/lib/watchlist";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { ShareButton } from "@/components/share-button";
 import { toListParam } from "@/lib/listParams";
+import { DistributionBar } from "@/components/comparison-distribution";
+import { SmoothAccordion } from "@/components/smooth-accordion";
+import { ListingAccordions } from "@/components/listing-accordions";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -45,10 +53,12 @@ export default async function ListingDetailPage({
   // None of these depend on each other — awaiting them one at a time (as
   // this used to) meant paying for five sequential DB round-trips before
   // the page could render at all, even though each query itself is fast.
-  const [modelDescription, currentUser, firstSeenPrices] = await Promise.all([
+  const [modelDescription, currentUser, firstSeenPrices, similarStats, defaults] = await Promise.all([
     getVehicleModelDescription(listing.make, listing.model),
     getCurrentUser(),
     getFirstSeenPrices([listing.id]),
+    getSimilarListingStats(listing.make, listing.model, listing.id, listing.year ?? undefined),
+    getEffectiveDefaults(),
   ]);
   const isWatchlisted = currentUser ? await isListingWatchlisted(currentUser.id, listing.id) : undefined;
   const firstSeenPrice = firstSeenPrices.get(listing.id);
@@ -56,29 +66,29 @@ export default async function ListingDetailPage({
 
   // Carries the same deposit/financeEnabled/annualKm the user set on the
   // search page so the breakdown here matches what they saw on the results
-  // list, rather than silently reverting to defaults.
+  // list — falling back to the viewer's own saved settings (not the search's
+  // originating user's) when a param is absent, e.g. a bare shared listing
+  // link with no search context at all.
   const query = await searchParams;
-  const deposit = toNumber(first(query.deposit));
-  const annualKm = toNumber(first(query.annualKm));
+  const deposit = toNumber(first(query.deposit)) ?? defaults.deposit;
+  const annualKm = toNumber(first(query.annualKm)) ?? defaults.annualKm;
   const queryInsuranceCoverType = first(query.insuranceCoverType);
   const insuranceCoverType: InsuranceCoverType | undefined =
     queryInsuranceCoverType === "third_party_fire_theft" || queryInsuranceCoverType === "none" ? queryInsuranceCoverType : undefined;
-  // Financing defaults to off — see search-form.tsx's hidden-fallback
-  // comment for why absence here (an old link predating this field, say)
-  // reads the same as an explicit "false".
-  const financeEnabled = first(query.financeEnabled) === "true";
+  const rawFinanceEnabled = first(query.financeEnabled);
+  const financeEnabled = rawFinanceEnabled !== undefined ? rawFinanceEnabled === "true" : defaults.financeEnabled;
 
   // Finance off means no loan is modeled at all — depositFraction: 1 forces
   // loanAmount (and so financeInterest) to $0, consistent with how the
   // search results list computes the same listing's cost.
   const financeOptions = financeEnabled ? { deposit } : { depositFraction: 1 };
 
-  // Lets a visitor re-run the estimate over a different horizon via the
-  // slider below — clamped to the 1-5 range the slider itself offers, so a
-  // hand-edited URL can't ask for something the UI doesn't represent.
+  // ?ownershipYears= still overrides for a shared link (clamped to the 1-5
+  // range Settings itself offers), but the slider that used to let a visitor
+  // adjust this per-listing is gone — it's a Settings-page default now.
   const rawOwnershipYears = toNumber(first(query.ownershipYears));
   const ownershipYears =
-    rawOwnershipYears !== undefined ? Math.min(Math.max(Math.round(rawOwnershipYears), 1), 5) : 3;
+    rawOwnershipYears !== undefined ? Math.min(Math.max(Math.round(rawOwnershipYears), 1), 5) : defaults.ownershipYears;
 
   const ownershipCost = estimate3YearOwnershipCost(
     {
@@ -118,6 +128,15 @@ export default async function ListingDetailPage({
   });
   const sameModelHref = `/?${sameModelParams.toString()}`;
 
+  // Similar listings: same make/model but also filtered to similar age vehicles
+  // (±3 years) to match the comparison stats shown in the comparison box.
+  const similarListingsParams = new URLSearchParams(sameModelParams);
+  if (listing.year !== null) {
+    similarListingsParams.set("minYear", String(listing.year - 3));
+    similarListingsParams.set("maxYear", String(listing.year + 3));
+  }
+  const similarListingsHref = `/?${similarListingsParams.toString()}`;
+
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <Link href={backHref} className="mb-6 flex w-fit items-center gap-1 text-sm text-muted hover:text-accent lg:mb-8">
@@ -133,7 +152,7 @@ export default async function ListingDetailPage({
               </h1>
               {listing.variant && <p className="text-sm text-muted">{listing.variant}</p>}
             </div>
-            <Link href={sameModelHref} className="text-sm text-accent hover:underline">
+            <Link href={`${sameModelHref}&back=${encodeURIComponent(`/listing/${listing.id}`)}`} className="text-sm text-accent hover:underline">
               See other {listing.make} {listing.model} listings →
             </Link>
           </header>
@@ -207,27 +226,74 @@ export default async function ListingDetailPage({
         </main>
 
         <aside className="mt-6 flex flex-col gap-3 lg:sticky lg:top-20 lg:mt-0">
-          <OwnershipYearsSlider years={ownershipYears} />
+          {similarStats ? (
+            <ListingAccordions
+              ownershipTitle={`${ownershipCost.ownershipYears}-year ownership costs`}
+              ownershipPrice={<span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>}
+              ownershipContent={
+                <OwnershipBreakdown
+                  breakdown={ownershipCost}
+                  price={price}
+                  bodyType={listing.bodyType}
+                  powertrain={listing.powertrain}
+                  engine={listing.engine}
+                  make={listing.make}
+                  year={listing.year}
+                  mileageKm={listing.mileageKm}
+                  deposit={financeEnabled ? deposit : undefined}
+                  financeEnabled={financeEnabled}
+                  annualKm={annualKm}
+                />
+              }
+              comparisonTitle="How this listing compares to similar listings"
+              comparisonRightContent={
+                listing.year !== null && (
+                  <span className="text-sm text-muted">
+                    {listing.make} {listing.model}, {listing.year - 3}–{listing.year + 3}
+                  </span>
+                )
+              }
+              comparisonContent={
+                <div className="flex flex-col gap-5">
+                  <DistributionBar
+                    label="Price"
+                    min={similarStats.minPrice}
+                    max={similarStats.maxPrice}
+                    avg={similarStats.avgPrice}
+                    current={price}
+                    minFormatted={formatCurrency(similarStats.minPrice)}
+                    maxFormatted={formatCurrency(similarStats.maxPrice)}
+                    avgFormatted={formatCurrency(similarStats.avgPrice)}
+                    currentFormatted={formatCurrency(price)}
+                  />
 
-          <details className="card group overflow-hidden" open>
-            <summary className="flex cursor-pointer list-none select-none items-baseline justify-between gap-4 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-4 w-4 shrink-0 text-accent transition-transform group-open:rotate-90"
-                  aria-hidden="true"
-                >
-                  <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
-                </svg>
-                <span className="group-open:hidden">{ownershipCost.ownershipYears}-year ownership costs</span>
-                <span className="hidden group-open:inline">
-                  How the {ownershipCost.ownershipYears}-year ownership cost is calculated
-                </span>
-              </span>
-              <span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>
-            </summary>
-            <div className="border-t border-border px-4 pb-4 pt-3">
+                  {listing.mileageKm !== null && similarStats.minMileageKm !== null && similarStats.maxMileageKm !== null && (
+                    <DistributionBar
+                      label="Mileage"
+                      min={similarStats.minMileageKm}
+                      max={similarStats.maxMileageKm}
+                      avg={similarStats.avgMileageKm ?? similarStats.minMileageKm}
+                      current={listing.mileageKm}
+                      minFormatted={`${formatNumber(Math.round(similarStats.minMileageKm))} km`}
+                      maxFormatted={`${formatNumber(Math.round(similarStats.maxMileageKm))} km`}
+                      avgFormatted={`${formatNumber(Math.round(similarStats.avgMileageKm ?? similarStats.minMileageKm))} km`}
+                      currentFormatted={`${formatNumber(Math.round(listing.mileageKm))} km`}
+                    />
+                  )}
+
+                  <Link href={similarListingsHref} className="text-xs font-semibold text-accent hover:underline">
+                    See all similar listings →
+                  </Link>
+                </div>
+              }
+            />
+          ) : (
+            <SmoothAccordion
+              id="ownership-details"
+              title={<span>{ownershipCost.ownershipYears}-year ownership costs</span>}
+              rightContent={<span className="text-lg font-extrabold accent-gradient-text">{formatCurrency(ownershipCost.total)}</span>}
+              isOpen={true}
+            >
               <OwnershipBreakdown
                 breakdown={ownershipCost}
                 price={price}
@@ -241,8 +307,8 @@ export default async function ListingDetailPage({
                 financeEnabled={financeEnabled}
                 annualKm={annualKm}
               />
-            </div>
-          </details>
+            </SmoothAccordion>
+          )}
         </aside>
       </div>
     </div>
