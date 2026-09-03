@@ -154,10 +154,15 @@ export async function fetchDetailPageData(url: string): Promise<DetailPageData> 
 
   // Extract image from og:image meta tag — listing cards load images
   // dynamically via JS, so the static listing page has no img src. The
-  // detail page's og:image always has it.
+  // detail page's og:image always has it. Some dealers' templates (e.g.
+  // Auto Legend) emit a generic site-logo og:image in a shared head
+  // partial, then a second, page-specific og:image with the real vehicle
+  // photo further down — the last match wins so that override takes
+  // effect; a template with only one og:image (the common case, e.g. AJ
+  // Motors) is unaffected either way.
   let imageUrl: string | undefined;
-  const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
-  if (ogImageMatch) imageUrl = ogImageMatch[1];
+  const ogImageMatches = [...html.matchAll(/<meta property="og:image" content="([^"]+)"/g)];
+  if (ogImageMatches.length > 0) imageUrl = ogImageMatches[ogImageMatches.length - 1][1];
 
   return { bodyType, imageUrl };
 }
