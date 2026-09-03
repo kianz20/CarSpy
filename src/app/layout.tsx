@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { AuthNav } from "@/components/auth-nav";
 import { FeedbackButton } from "@/components/feedback-button";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,8 +20,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CarValue",
+  title: "CarSpy",
   description: "Find the best used-car deals across NZ dealer inventory",
+  appleWebApp: {
+    title: "CarSpy",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#6d5bff",
 };
 
 // Resolves and applies the theme before first paint, always as an explicit
@@ -94,6 +103,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             logo/AuthNav/settings link around, however the header's own
             layout changes. */}
         <FeedbackButton />
+        <PwaRegister />
         {children}
         <Footer />
       </body>
