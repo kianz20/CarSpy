@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { CRAWLER_USER_AGENT } from "../robots";
 import type { NormalizedListing } from "../types";
-import { classifySpecLine, normalizeBodyType, parsePrice, parseVehicleTitle } from "../normalize";
+import { classifySpecLine, inferMotorcycleFromEngineCc, normalizeBodyType, parsePrice, parseVehicleTitle } from "../normalize";
 import { mapWithConcurrency } from "../concurrency";
 
 /**
@@ -240,7 +240,7 @@ export async function crawlMotorcentralDealer(
       variant,
       engine: card.engine,
       transmission: card.transmission,
-      bodyType: detailData.bodyType,
+      bodyType: detailData.bodyType ?? inferMotorcycleFromEngineCc(card.engine),
       powertrain: card.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,

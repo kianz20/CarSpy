@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { CRAWLER_USER_AGENT } from "../robots";
 import type { NormalizedListing } from "../types";
-import { normalizeBodyType, normalizePowertrain, normalizeTransmission, parsePrice, parseVehicleTitle } from "../normalize";
+import { inferMotorcycleFromEngineCc, normalizeBodyType, normalizePowertrain, normalizeTransmission, parsePrice, parseVehicleTitle } from "../normalize";
 import { mapWithConcurrency } from "../concurrency";
 
 /**
@@ -186,7 +186,7 @@ export async function crawlCarUpdaterDealer(
       variant,
       engine: card.engine,
       transmission: card.transmission,
-      bodyType: detailFields?.bodyType,
+      bodyType: detailFields?.bodyType ?? inferMotorcycleFromEngineCc(card.engine),
       powertrain: detailFields?.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,

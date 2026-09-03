@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { CRAWLER_USER_AGENT } from "../robots";
 import type { NormalizedListing } from "../types";
-import { normalizeBodyType, normalizePowertrain, normalizeTransmission, parseMileageKm, parsePrice } from "../normalize";
+import { inferMotorcycleFromEngineCc, normalizeBodyType, normalizePowertrain, normalizeTransmission, parseMileageKm, parsePrice } from "../normalize";
 import { mapWithConcurrency } from "../concurrency";
 
 /**
@@ -147,7 +147,7 @@ function parseResultsFragment(html: string, origin: string): NormalizedListing[]
       variant,
       engine: fields["engine"],
       transmission: normalizeTransmission(fields["transmission"]),
-      bodyType,
+      bodyType: bodyType ?? inferMotorcycleFromEngineCc(fields["engine"]),
       powertrain,
       mileageKm: fields["odometer"] ? parseMileageKm(fields["odometer"]) : undefined,
       price,
