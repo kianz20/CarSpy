@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getListingById, getVehicleModelDescription } from "@/lib/search/listings";
+import { getListingById, getVehicleModelDescription, getFirstSeenPrices } from "@/lib/search/listings";
 import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
 import { OwnershipYearsSlider } from "@/components/ownership-years-slider";
@@ -10,6 +10,8 @@ import { formatCurrency, formatEngine, formatNumber } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isListingWatchlisted } from "@/lib/watchlist";
 import { WatchlistButton } from "@/components/watchlist-button";
+import { ShareButton } from "@/components/share-button";
+import { toListParam } from "@/lib/listParams";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -39,9 +41,18 @@ export default async function ListingDetailPage({
 
   const { listings: listing, dealers: dealer } = row;
   const price = parseFloat(listing.price);
-  const modelDescription = await getVehicleModelDescription(listing.make, listing.model);
-  const currentUser = await getCurrentUser();
+
+  // None of these depend on each other — awaiting them one at a time (as
+  // this used to) meant paying for five sequential DB round-trips before
+  // the page could render at all, even though each query itself is fast.
+  const [modelDescription, currentUser, firstSeenPrices] = await Promise.all([
+    getVehicleModelDescription(listing.make, listing.model),
+    getCurrentUser(),
+    getFirstSeenPrices([listing.id]),
+  ]);
   const isWatchlisted = currentUser ? await isListingWatchlisted(currentUser.id, listing.id) : undefined;
+  const firstSeenPrice = firstSeenPrices.get(listing.id);
+  const priceDrop = firstSeenPrice !== undefined ? firstSeenPrice.price - price : 0;
 
   // Carries the same deposit/financeEnabled/annualKm the user set on the
   // search page so the breakdown here matches what they saw on the results
@@ -93,6 +104,20 @@ export default async function ListingDetailPage({
   }
   const backHref = `/${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
 
+  // Same make+model, not just model — "other listings for this model" means
+  // other Corollas, not every "Corolla"-badged trim across every make (there
+  // isn't one, but the intent generalizes). Reuses the same comma-list param
+  // encoding the search form's multi-select filters already write (see
+  // lib/listParams.ts) even though there's only one value here.
+  const sameModelParams = new URLSearchParams({
+    make: toListParam([listing.make]),
+    model: toListParam([listing.model]),
+    financeEnabled: "false",
+    annualKm: "12000",
+    sort: "total",
+  });
+  const sameModelHref = `/?${sameModelParams.toString()}`;
+
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <Link href={backHref} className="mb-6 flex w-fit items-center gap-1 text-sm text-muted hover:text-accent lg:mb-8">
@@ -101,11 +126,16 @@ export default async function ListingDetailPage({
 
       <div className="lg:grid lg:grid-cols-[1fr_700px] lg:items-start lg:gap-8">
         <main className="flex min-w-0 flex-col gap-6">
-          <header>
-            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-              {listing.year} {listing.make} {listing.model}
-            </h1>
-            {listing.variant && <p className="text-sm text-muted">{listing.variant}</p>}
+          <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                {listing.year} {listing.make} {listing.model}
+              </h1>
+              {listing.variant && <p className="text-sm text-muted">{listing.variant}</p>}
+            </div>
+            <Link href={sameModelHref} className="text-sm text-accent hover:underline">
+              See other {listing.make} {listing.model} listings →
+            </Link>
           </header>
 
           <ListingImage
@@ -116,13 +146,21 @@ export default async function ListingDetailPage({
 
           <div className="card flex flex-wrap items-center justify-between gap-4 p-4">
             <div>
-              <div className="text-3xl font-extrabold accent-gradient-text">{formatCurrency(price)}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-3xl font-extrabold accent-gradient-text">{formatCurrency(price)}</div>
+                {priceDrop > 0 && (
+                  <span className="pill bg-emerald-500/12 text-emerald-600 dark:text-emerald-400">
+                    ↓ {formatCurrency(priceDrop)} since first seen
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-muted">asking price</div>
             </div>
             <div className="flex items-center gap-2">
               {isWatchlisted !== undefined && (
                 <WatchlistButton listingId={listing.id} isWatchlisted={isWatchlisted} variant="button" />
               )}
+              <ShareButton listingId={listing.id} />
               <a href={listing.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
                 View on {dealer.name} →
               </a>

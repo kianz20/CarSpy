@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -49,7 +50,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* next/script, not a raw <script> tag — Next 16 warns (and won't
+            execute it client-side) for a plain <script> rendered by a React
+            component; `beforeInteractive` is what actually guarantees this
+            runs before hydration/paint, which is the whole point here. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col">
         <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-md">

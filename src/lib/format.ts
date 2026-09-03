@@ -29,6 +29,12 @@ export function formatNumber(n: number): string {
   return numberFormatter.format(n);
 }
 
+const dateFormatter = new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric" });
+
+export function formatDate(date: Date): string {
+  return dateFormatter.format(date);
+}
+
 /**
  * Engine capacity comes from crawled listings as free text — mostly "1240cc"
  * or "1200 cc", but sometimes with trailing motor power ("1991cc/155kW"),

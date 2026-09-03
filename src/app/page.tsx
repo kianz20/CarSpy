@@ -1,8 +1,10 @@
+import Link from "next/link";
 import {
   searchListings,
   getMileageBracketStats,
   getDistinctMakes,
   getDistinctRegions,
+  getFirstSeenPrices,
   type ListingSearchFilters,
   type ListingSort,
 } from "@/lib/search/listings";
@@ -149,6 +151,8 @@ export default async function Home({
     }));
   }
 
+  const firstSeenPrices = await getFirstSeenPrices(listingsData.map((l) => l.id));
+
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <header className="mb-6 flex flex-col gap-2 lg:mb-8">
@@ -179,7 +183,19 @@ export default async function Home({
         </div>
       ) : (
         <div className="lg:grid lg:grid-cols-[320px_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8 xl:grid-cols-[320px_1fr_260px]">
-          <aside className="mb-6 lg:sticky lg:top-20 lg:col-start-1 lg:row-start-2 lg:mb-0">
+          <aside className="relative mb-6 lg:sticky lg:top-20 lg:col-start-1 lg:row-start-2 lg:mb-0">
+            {/* Absolutely positioned above the filter box (not pushed into
+                flow above it) — the box itself stays exactly where it was.
+                Right-aligned against the box, not the results column.
+                Returns to the wide, pre-search filter layout; Clear filters
+                (below, in the form) deliberately doesn't do this anymore —
+                it just resets which listings match while staying here. */}
+            <Link
+              href="/"
+              className="absolute -top-[41px] right-0 flex items-center gap-1 text-sm text-muted hover:text-accent"
+            >
+              <span aria-hidden="true">←</span> Back
+            </Link>
             <div className="card p-4 sm:p-5">
               <SearchForm
                 bodyTypes={bodyTypes}
@@ -192,7 +208,7 @@ export default async function Home({
           </aside>
 
           {listingsData.length > 0 && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 lg:col-start-2 lg:row-start-1 lg:mb-6">
+            <div className="relative mb-4 flex flex-wrap items-center justify-between gap-2 lg:col-start-2 lg:row-start-1 lg:mb-6 lg:top-[10px]">
               <p className="text-sm text-muted">
                 <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
                 matching listing{totalCount === 1 ? "" : "s"}
@@ -234,6 +250,7 @@ export default async function Home({
                         listing={listing}
                         detailHref={detailHref}
                         isWatchlisted={watchlistedIds?.has(listing.id)}
+                        firstSeenPrice={firstSeenPrices.get(listing.id)}
                         ownershipCost={estimate3YearOwnershipCost(
                           {
                             make: listing.make,

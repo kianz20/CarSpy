@@ -1,6 +1,6 @@
 import { and, asc, count, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { listings, dealers, vehicleModelDescriptions } from "@/db/schema";
+import { listings, dealers, vehicleModelDescriptions, listingPriceHistory } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
 import { isNationwide, NZ_REGIONS, parseDealerRegions } from "@/lib/regions";
 import {
@@ -239,6 +239,30 @@ export async function getMileageBracketStats(filters: ListingSearchFilters): Pro
       averagePrice: row ? parseFloat(row.averagePrice) : null,
     };
   });
+}
+
+export type FirstSeenPrice = { price: number; observedAt: Date };
+
+/** Earliest recorded price (+ when it was recorded) per listing, keyed by
+ * listing id — for showing a "price dropped" badge against the current
+ * asking price. Only listings that have actually changed price show up as a
+ * real drop; a listing with just its first-seen snapshot has
+ * firstPrice === current price, so callers should only badge a genuine
+ * decrease. */
+export async function getFirstSeenPrices(listingIds: number[]): Promise<Map<number, FirstSeenPrice>> {
+  if (listingIds.length === 0) return new Map();
+
+  const rows = await db
+    .selectDistinctOn([listingPriceHistory.listingId], {
+      listingId: listingPriceHistory.listingId,
+      price: listingPriceHistory.price,
+      observedAt: listingPriceHistory.observedAt,
+    })
+    .from(listingPriceHistory)
+    .where(inArray(listingPriceHistory.listingId, listingIds))
+    .orderBy(listingPriceHistory.listingId, asc(listingPriceHistory.observedAt));
+
+  return new Map(rows.map((r) => [r.listingId, { price: parseFloat(r.price), observedAt: r.observedAt }]));
 }
 
 /** A single listing + its dealer, for the listing detail page. Returns

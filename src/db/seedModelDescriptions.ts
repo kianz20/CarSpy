@@ -635,6 +635,438 @@ const modelDescriptions = [
       "Generally reliable. Regular maintenance important. Engine generally solid. Check transmission fluid condition. Hybrid option proven.",
     notes: "Excellent space efficiency. Good fuel economy. Practical family vehicle.",
   },
+  {
+    make: "Land Rover",
+    model: "Range Rover",
+    description:
+      "Premium large SUV with luxury interior and advanced all-wheel drive system. Known for off-road capability and refined comfort. Status symbol with strong presence.",
+    reliabilityIssues:
+      "Common issues include electrical faults, transmission problems, and suspension wear. Expensive repairs. Many sensors can fail. Regular servicing essential.",
+    notes: "Luxury brand with premium maintenance costs. Full service history critical. Check for any warning lights or electrical issues.",
+  },
+  {
+    make: "MG",
+    model: "ZS",
+    description:
+      "Affordable compact SUV offering good value and modern features. Practical layout with decent interior quality. Growing market presence in NZ.",
+    reliabilityIssues:
+      "Newer brand in NZ so long-term reliability not fully established. Early reports reasonable. Warranty coverage varies. Regular maintenance important.",
+    notes: "Good value proposition for budget-conscious buyers. Warranty period should be checked. Parts availability limited but improving.",
+  },
+  {
+    make: "Holden",
+    model: "Colorado",
+    description:
+      "Australian mid-size dual-cab ute with good towing capacity. Practical work vehicle and lifestyle platform. Discontinued 2017 but well-regarded.",
+    reliabilityIssues:
+      "Generally reliable Australian engineering. Some transmission issues reported in certain years. Diesel engines robust. Check for any electrical issues.",
+    notes: "Australian-built with good spare parts availability. Towing capability solid. Manual and automatic options available.",
+  },
+  {
+    make: "Kia",
+    model: "Sorento",
+    description:
+      "Mid-size 7-seater SUV with attractive design and good value. Comfortable interior and practical features. Growing reliability reputation.",
+    reliabilityIssues:
+      "Newer models very reliable with strong warranty. Earlier models improved with time. Warranty is major advantage. Regular maintenance important.",
+    notes: "Excellent warranty on newer models. Spacious 7-seater option. Good value family SUV. Available FWD and AWD.",
+  },
+  {
+    make: "Mazda",
+    model: "3",
+    description:
+      "Compact hatchback/sedan with engaging driving dynamics and modern design. Good fuel economy, practical interior, and fun-to-drive reputation.",
+    reliabilityIssues:
+      "Generally reliable. Transmission fluid condition should be monitored regularly. Some earlier models may have minor issues. Modern versions improved.",
+    notes: "Available sedan and hatchback. Popular choice. Good driving experience. Aftermarket support excellent.",
+  },
+  {
+    make: "Haval",
+    model: "H6",
+    description:
+      "Chinese compact SUV offering good value and practical layout. Modern features and decent performance. Growing presence in Asia and NZ.",
+    reliabilityIssues:
+      "Relatively new brand so long-term reliability not fully established. Early reports acceptable. Warranty coverage variable. Parts availability limited.",
+    notes: "Budget-friendly option with decent features. Warranty period varies by dealer. Service network still developing.",
+  },
+  {
+    make: "Hyundai",
+    model: "Ioniq",
+    description:
+      "Hybrid sedan focusing on fuel efficiency and practicality. Excellent running costs with modern features. Growing popularity in eco-conscious market.",
+    reliabilityIssues:
+      "Hybrid system very reliable. Generally solid mechanical components. Warranty coverage strong. Regular maintenance keeps these efficient.",
+    notes: "Outstanding fuel economy. Hybrid technology proven. Excellent warranty benefits. Good for eco-minded buyers.",
+  },
+  {
+    make: "Mini",
+    model: "Cooper",
+    description:
+      "Iconic compact hatchback with distinctive styling and engaging driving dynamics. Fun-to-drive character with modern interior. Popular lifestyle choice.",
+    reliabilityIssues:
+      "Service costs can be high. Common issues: turbocharger problems, transmission issues, electrical gremlins. Parts more expensive than mainstream brands.",
+    notes: "Fun driving experience. Strong enthusiast community. Parts and labor pricey. Extended warranty recommended.",
+  },
+  {
+    make: "Volkswagen",
+    model: "Amarok",
+    description:
+      "German mid-size dual-cab ute with quality engineering and good towing capacity. Practical work vehicle with refined cabin. Premium pickup option.",
+    reliabilityIssues:
+      "Generally reliable German engineering. Diesel engines robust. Some transmission issues possible. Service costs higher than Asian alternatives.",
+    notes: "Quality German construction. Good towing capability. Premium service costs. Parts availability good for popular models.",
+  },
+  {
+    make: "Nissan",
+    model: "Skyline",
+    description:
+      "Japanese performance sedan/coupe with strong engine and sporty credentials. Popular with enthusiasts and tuning culture. Legendary Japanese icon.",
+    reliabilityIssues:
+      "Reliability varies with age and maintenance history. Turbo engines require good maintenance. Some models prone to transmission issues. Regular servicing critical.",
+    notes: "Popular for modifications and tuning. Parts availability good for common models. Performance enthusiast favorite.",
+  },
+  {
+    make: "Nissan",
+    model: "March",
+    description:
+      "Affordable compact city hatchback with excellent fuel economy. Practical size for urban driving and tight parking. Reliable budget option.",
+    reliabilityIssues:
+      "Generally reliable with good longevity if maintained. CVT transmission in modern models performs well. Occasional engine issues in older examples.",
+    notes: "Excellent city car. Low running costs. Parts affordable. Popular first car option.",
+  },
+  {
+    make: "Toyota",
+    model: "SAI",
+    description:
+      "Mid-size hybrid sedan imported from Japan. Excellent fuel economy with Toyota reliability. Practical for daily commuting and fuel savings.",
+    reliabilityIssues:
+      "Hybrid system very reliable. Generally solid mechanical components. Battery typically lasts 10+ years. Regular maintenance keeps these running well.",
+    notes: "Excellent fuel economy (4-5L/100km). Hybrid technology proven and reliable. Parts availability through specialists.",
+  },
+  {
+    make: "Lexus",
+    model: "IS",
+    description:
+      "Premium compact sedan with luxury features and sport-oriented handling. Known for reliability and refined driving experience. High-quality interior.",
+    reliabilityIssues:
+      "Excellent reliability overall. Very dependable for a luxury brand. Occasional electrical or suspension issues. Service costs premium. Parts expensive.",
+    notes: "Luxury reliability. Excellent resale value. Premium but justifiable costs. Full service history important.",
+  },
+  {
+    make: "Mazda",
+    model: "CX-8",
+    description:
+      "Mid-size 3-row SUV with premium interior and engaging driving dynamics. Spacious for families while maintaining fun-to-drive character.",
+    reliabilityIssues:
+      "Generally reliable. Some reports of transmission or engine concerns. Modern versions improved. Pre-purchase inspection recommended.",
+    notes: "Premium cabin quality. Spacious 3-row seating. Good driving experience. Available AWD option.",
+  },
+  {
+    make: "Land Rover",
+    model: "Discovery",
+    description:
+      "Large premium SUV with excellent off-road capability and spacious interior. Comfortable for families with good towing capacity.",
+    reliabilityIssues:
+      "Common issues: electrical faults, transmission problems, suspension wear, diesel engine issues. Expensive repairs. Specialist service recommended.",
+    notes: "Luxury off-road capability. Premium maintenance costs. Full service history essential. Check for electrical issues.",
+  },
+  {
+    make: "Toyota",
+    model: "Noah",
+    description:
+      "Compact 7-seater minivan with flexible seating and practical layout. Fuel-efficient for a family vehicle. Imported from Japan.",
+    reliabilityIssues:
+      "Generally reliable. Regular maintenance important. Engine generally solid. Transmission fluid condition should be checked. Hybrid option improving.",
+    notes: "Practical family minivan. Good fuel economy. Space-efficient design. Growing in NZ market.",
+  },
+  {
+    make: "Mazda",
+    model: "CX-9",
+    description:
+      "Large 3-row premium SUV with refined interior and engaging driving dynamics. Spacious cabin with comfortable seating for families.",
+    reliabilityIssues:
+      "Generally reliable. Transmission fluid condition should be monitored. Some reports of minor issues in older models. Regular service important.",
+    notes: "Premium cabin quality. Spacious 3-row seating. Fun to drive for large SUV. Good value used option.",
+  },
+  {
+    make: "Mazda",
+    model: "2",
+    description:
+      "Compact hatchback with Mazda's fun-to-drive philosophy and modern styling. Good fuel economy and practical interior. Urban-focused vehicle.",
+    reliabilityIssues:
+      "Generally reliable. Some older models may have minor issues. Engine usually solid. Transmission condition should be checked on used units.",
+    notes: "Fun driving dynamics. Compact for city parking. Good fuel economy. Affordable running costs.",
+  },
+  {
+    make: "Toyota",
+    model: "Vitz",
+    description:
+      "Small city hatchback with excellent fuel economy and practicality. Popular worldwide with reliable Toyota engineering. Affordable and economical choice.",
+    reliabilityIssues:
+      "Very reliable. Generally low-cost repairs. Occasional CVT transmission issues in some models but rare. Engine very durable.",
+    notes: "Excellent for city driving. Very affordable running costs. Parts inexpensive. Popular first-car option.",
+  },
+  {
+    make: "Tesla",
+    model: "Model 3",
+    description:
+      "Premium electric sedan with advanced technology and impressive acceleration. Superb autopilot features and minimalist interior design.",
+    reliabilityIssues:
+      "Build quality inconsistent (panel gaps reported). Battery warranty 8 years/160,000km. Service mostly through Tesla service centers. Limited traditional mechanic compatibility.",
+    notes: "Exceptional performance. Cutting-edge tech. Charging infrastructure rapidly improving. Premium pricing.",
+  },
+  {
+    make: "Volkswagen",
+    model: "Touareg",
+    description:
+      "Premium large SUV with luxury features and sophisticated design. Spacious interior and refined driving experience. High-quality German engineering.",
+    reliabilityIssues:
+      "Service costs can be high. Common issues: electrical faults, transmission problems, diesel engine concerns. Regular maintenance critical.",
+    notes: "Luxury SUV with premium features. Service costs higher than Japanese brands. Full service history important.",
+  },
+  {
+    make: "Toyota",
+    model: "Estima",
+    description:
+      "Premium large minivan with luxury features and spacious interior. Imported from Japan with advanced technology. Popular for families and business use.",
+    reliabilityIssues:
+      "Generally very reliable. V6 engine solid and durable. Regular maintenance important. Parts availability through specialists. Check service history.",
+    notes: "Luxury minivan features. Spacious and comfortable. Imported from Japan. Premium quality finish.",
+  },
+  {
+    make: "Nissan",
+    model: "Lafesta",
+    description:
+      "Compact 7-seater MPV with flexible interior and practical layout. Good space efficiency for families. Growing in popularity.",
+    reliabilityIssues:
+      "Generally reliable. CVT transmission condition should be checked. Engine generally solid. Regular fluid changes recommended.",
+    notes: "Practical for families. Space-efficient design. Flexible seating options. Good visibility.",
+  },
+  {
+    make: "Suzuki",
+    model: "Ignis",
+    description:
+      "Quirky compact crossover with unique design and fun driving character. Good ground clearance with practical interior. Budget-friendly option.",
+    reliabilityIssues:
+      "Generally reliable. Engine solid and efficient. Occasional CVT issues but uncommon. Regular maintenance keeps these running well.",
+    notes: "Fun and distinctive style. Good ground clearance. Affordable budget option. Low running costs.",
+  },
+  {
+    make: "Nissan",
+    model: "NV200",
+    description:
+      "Compact commercial van with practical layout and good loading capacity. Versatile for small business use. Growing personal use market.",
+    reliabilityIssues:
+      "Generally reliable workhorse. Diesel engines robust. Check transmission condition. Mechanical simplicity aids longevity.",
+    notes: "Practical work vehicle. Good fuel economy for van. Parts availability good. Workhorse reputation.",
+  },
+  {
+    make: "Mazda",
+    model: "CX-30",
+    description:
+      "Compact SUV with stylish design and fun driving dynamics. Good fuel economy with practical cargo space. Modern features in tight package.",
+    reliabilityIssues:
+      "Generally reliable. Some reports of transmission or engine concerns. Regular maintenance important. Newer models more proven.",
+    notes: "Stylish compact SUV. Fun to drive. Good fuel economy. Available AWD option.",
+  },
+  {
+    make: "Kia",
+    model: "Seltos",
+    description:
+      "Compact SUV with modern styling and affordable price point. Good interior quality and practical features. Growing market presence.",
+    reliabilityIssues:
+      "Newer model with improving reliability. Warranty is major advantage. Regular maintenance recommended. Parts availability improving.",
+    notes: "Good value compact SUV. Strong warranty coverage. Modern features. Available FWD and AWD.",
+  },
+  {
+    make: "BMW",
+    model: "X5",
+    description:
+      "Premium large SUV with luxury features and strong performance. Spacious interior with advanced technology. Status symbol with off-road capability.",
+    reliabilityIssues:
+      "Expensive repairs. Common issues: cooling system failures, electrical gremlins, transmission problems. High maintenance costs. Service expensive.",
+    notes: "Luxury brand with associated costs. Premium features throughout. Full service history essential. Specialist service recommended.",
+  },
+  {
+    make: "Audi",
+    model: "A4",
+    description:
+      "Premium compact sedan with sophisticated design and solid engineering. Quality interior with modern technology. German luxury at accessible price point.",
+    reliabilityIssues:
+      "Generally reliable but service costs high. Common issues: electrical faults, transmission problems, suspension wear. Regular servicing critical.",
+    notes: "Premium sedan with luxury features. Service costs higher than mainstream. Full history important. Quality build throughout.",
+  },
+  {
+    make: "Suzuki",
+    model: "Vitara",
+    description:
+      "Compact SUV with fun driving dynamics and good value proposition. Available all-wheel drive for various conditions. Practical family vehicle.",
+    reliabilityIssues:
+      "Generally reliable. Engine solid. CVT transmission performs well generally. Regular maintenance keeps these running smoothly.",
+    notes: "Good value compact SUV. Fun driving experience. Available FWD and AWD. Affordable running costs.",
+  },
+  {
+    make: "Mitsubishi",
+    model: "Eclipse",
+    description:
+      "Sporty coupe/sedan with performance styling and engaging driving experience. Popular with enthusiasts and tuning culture.",
+    reliabilityIssues:
+      "Reliability varies with age and maintenance. Turbocharged models need good care. Transmission issues possible. Regular servicing important.",
+    notes: "Performance-oriented design. Popular for modifications. Enthusiast community strong. Fuel costs moderate.",
+  },
+  {
+    make: "Mazda",
+    model: "BT-50",
+    description:
+      "Mid-size dual-cab ute with good towing capacity and practical build. Solid work vehicle with decent comfort for daily driving.",
+    reliabilityIssues:
+      "Generally reliable. Diesel engines robust when maintained. Check transmission oil and diff condition. Regular servicing keeps these solid.",
+    notes: "Good work ute. Towing capacity solid. Single and dual cab available. Fuel-efficient diesel.",
+  },
+  {
+    make: "Nissan",
+    model: "Juke",
+    description:
+      "Compact crossover with distinctive styling and practical layout. Good ground clearance with fun driving character. Urban-focused SUV.",
+    reliabilityIssues:
+      "Generally reliable. CVT transmission condition should be checked. Engine generally solid. Regular maintenance important.",
+    notes: "Distinctive funky styling. Good for city driving. CVT transmission requires monitoring. Practical for singles and couples.",
+  },
+  {
+    make: "Honda",
+    model: "Freed",
+    description:
+      "Compact 7-seater MPV with flexible seating and practical layout. Good space efficiency for families. Reliable Honda engineering.",
+    reliabilityIssues:
+      "Very reliable overall. Engine generally solid. Occasional transmission issues in some years. Regular maintenance keeps these running well.",
+    notes: "Excellent space for size. Practical family vehicle. Good fuel economy. Flexible seating options.",
+  },
+  {
+    make: "MG",
+    model: "HS",
+    description:
+      "Chinese mid-size SUV offering good value and modern features. Spacious interior with practical layout. Growing presence in Asia and NZ.",
+    reliabilityIssues:
+      "Relatively newer brand so long-term data limited. Early reports positive. Warranty varies. Regular maintenance important.",
+    notes: "Good value mid-size SUV. Modern features standard. Warranty varies by dealer. Service network developing.",
+  },
+  {
+    make: "Skoda",
+    model: "Kodiaq",
+    description:
+      "Czech mid-size 7-seater SUV with practical design and good value. Spacious interior perfect for families. Quality engineering from VW Group.",
+    reliabilityIssues:
+      "Generally reliable. Service costs reasonable compared to some European brands. Regular maintenance important. Parts availability good.",
+    notes: "Practical 7-seater option. Good space efficiency. Quality build. VW Group parts network accessible.",
+  },
+  {
+    make: "Honda",
+    model: "Shuttle",
+    description:
+      "Compact 7-seater MPV with practical flexible interior. Efficient space utilization perfect for families. Reliable Honda engineering.",
+    reliabilityIssues:
+      "Very reliable. Engine generally solid. Occasional CVT transmission issues but uncommon. Regular service keeps these running well.",
+    notes: "Excellent interior flexibility. Good fuel economy. Practical family vehicle. Space-efficient design.",
+  },
+  {
+    make: "Chery",
+    model: "Tiggo",
+    description:
+      "Chinese compact SUV offering affordable entry point to SUV market. Practical layout with modern styling. Budget-friendly option.",
+    reliabilityIssues:
+      "Chinese brand so long-term reliability not fully established. Early reports acceptable. Limited warranty typical. Parts availability sparse.",
+    notes: "Budget-friendly SUV entry point. Basic features. Warranty period typically shorter. Service network limited.",
+  },
+  {
+    make: "Land Rover",
+    model: "Defender",
+    description:
+      "Iconic rugged SUV with legendary off-road capability and utilitarian design. Spacious and practical for adventure. Cultural icon.",
+    reliabilityIssues:
+      "Reliability varies with age. Older models can have issues. Newer versions more refined. Common: electrical faults, rust. Regular maintenance essential.",
+    notes: "Legendary off-road icon. Rugged capability. Service costs can be high. Parts availability improving.",
+  },
+  {
+    make: "Kia",
+    model: "Carnival",
+    description:
+      "Premium large minivan with luxury features and spacious seating for eight. Comfortable and well-appointed for family trips. Growing market presence.",
+    reliabilityIssues:
+      "Newer model with good early reports. Warranty is strong advantage. Regular maintenance important. Parts availability improving.",
+    notes: "Luxurious family minivan. Excellent space for eight passengers. Strong warranty. Modern technology throughout.",
+  },
+  {
+    make: "Peugeot",
+    model: "3008",
+    description:
+      "French mid-size SUV with stylish design and good driving dynamics. Modern interior with quality materials. European flair.",
+    reliabilityIssues:
+      "Generally reliable but service costs higher than Asian brands. Regular maintenance critical. Electrical issues possible. Parts more expensive.",
+    notes: "Stylish European design. Quality interior finish. Service costs moderate but higher than Asian. Fuel-efficient.",
+  },
+  {
+    make: "Lexus",
+    model: "NX",
+    description:
+      "Premium compact SUV with luxury features and excellent reliability. Spacious and comfortable with advanced technology. High-quality finish.",
+    reliabilityIssues:
+      "Excellent reliability overall. Very dependable for a luxury brand. Occasional electrical or suspension issues. Service premium. Parts expensive.",
+    notes: "Luxury reliability. Premium features throughout. Excellent resale value. Full service history important.",
+  },
+  {
+    make: "Renault",
+    model: "Captur",
+    description:
+      "French compact SUV with practical layout and good value proposition. Stylish European design with modern features. Budget-conscious option.",
+    reliabilityIssues:
+      "Generally reliable. Service costs reasonable. Regular maintenance important. Parts availability through dealers. Engine generally solid.",
+    notes: "Good value compact SUV. Practical European design. Fuel-efficient engines. Parts availability decent.",
+  },
+  {
+    make: "Audi",
+    model: "Q5",
+    description:
+      "Premium compact SUV with luxury features and sophisticated design. Spacious and comfortable with advanced technology. High-quality materials.",
+    reliabilityIssues:
+      "Generally reliable but service costs high. Common issues: electrical faults, transmission problems, suspension wear. Regular servicing critical.",
+    notes: "Premium SUV with luxury features. Service costs higher than mainstream. Full history important. Specialist service recommended.",
+  },
+  {
+    make: "Ford",
+    model: "Transit",
+    description:
+      "Commercial van with spacious cargo area and practical design. Robust workhorse for trades and small business. Popular globally.",
+    reliabilityIssues:
+      "Generally reliable. Engine typically durable. Check transmission condition. Mechanical simplicity aids longevity. Regular maintenance important.",
+    notes: "Practical workhorse. Good cargo space. Fuel economy reasonable for size. Parts widely available.",
+  },
+  {
+    make: "Honda",
+    model: "CR-V",
+    description:
+      "Compact crossover with spacious interior and reliable performance. One of the original crossovers. Great for families and active lifestyles.",
+    reliabilityIssues:
+      "Excellent reliability record. Some 2007-2012 models reported engine piston ring issues causing oil consumption. Generally very dependable.",
+    notes: "Available FWD and AWD. Hybrid models offer good value. Spacious and practical.",
+  },
+  {
+    make: "Mini",
+    model: "Countryman",
+    description:
+      "Compact premium crossover with Mini's distinctive styling and fun character. Practical layout with modern features. Lifestyle choice.",
+    reliabilityIssues:
+      "Service costs can be high. Common issues: turbocharger problems, transmission issues, electrical gremlins. Parts more expensive than mainstream.",
+    notes: "Fun driving character. Stylish and distinctive. Parts and labor pricey. Extended warranty recommended.",
+  },
+  {
+    make: "Subaru",
+    model: "BRZ",
+    description:
+      "Lightweight sports car with balanced handling and affordable performance. Fun driving dynamics with engaging engine. Popular with enthusiasts.",
+    reliabilityIssues:
+      "Generally reliable. Engine prone to carbon buildup on some years. Clutch wear common if driven hard. Maintenance straightforward.",
+    notes: "Fun sports car at reasonable price. Manual transmission. Good resale among enthusiasts. Performance-focused.",
+  },
 ];
 
 

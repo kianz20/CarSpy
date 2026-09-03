@@ -16,6 +16,15 @@ type Option = { value: string; label: string };
 // than a native <select>, so they're tracked separately from this list.
 const NATIVE_FILTER_FIELD_NAMES = ["model", "minYear", "maxYear", "minPrice", "maxPrice", "maxMileageKm"] as const;
 
+// The five multi-select dropdowns, tracked as their own React state (see
+// below) rather than through FormData. Together with NATIVE_FILTER_FIELD_NAMES
+// and includeMotorcycles, this is everything Clear filters drops from the
+// URL — deliberately excluding annualKm/insuranceCoverType/financeEnabled/
+// deposit/sort, which configure the ownership-cost estimate and result
+// order rather than what listings match, so clearing filters shouldn't
+// touch them (or navigate away from the results page — see clearHref).
+const SELECT_FIELD_NAMES = ["bodyType", "powertrain", "make", "transmission", "region"] as const;
+
 export function SearchForm({
   bodyTypes,
   powertrains,
@@ -124,33 +133,39 @@ export function SearchForm({
     setDepositError(true);
   }
 
-  // Drops every param, not just the filter keys — Clear filters is a full
-  // reset back to the pre-search state (see page.tsx's hasSearched), which
-  // only goes false once financeEnabled disappears from the URL entirely.
-  const clearHref = "/";
+  // Drops only the actual filter keys, preserving annualKm/insuranceCoverType/
+  // financeEnabled/deposit/sort — Clear filters resets which listings match,
+  // not the ownership-cost inputs, and shouldn't navigate away from the
+  // results page (there's a separate "Back" link above the results for
+  // that — see page.tsx).
+  const clearParams = new URLSearchParams(current);
+  for (const name of [...SELECT_FIELD_NAMES, ...NATIVE_FILTER_FIELD_NAMES, "includeMotorcycles"]) {
+    clearParams.delete(name);
+  }
+  const clearHref = `/?${clearParams.toString()}`;
 
   // If the fields were only edited but never submitted, the URL never
   // changes when this navigates to clearHref — so the formKey-remount reset
-  // above won't fire. Reset every field directly so stale picks don't linger
-  // even when Next's router cache re-renders identical output.
+  // above won't fire. Reset the filter fields directly so stale picks don't
+  // linger even when Next's router cache re-renders identical output.
+  // Deliberately field-by-field (not form.reset()): a blanket reset would
+  // also revert annualKm/insuranceCoverType/financeEnabled/deposit, which
+  // Clear filters must leave untouched.
   function handleClear(event: MouseEvent<HTMLAnchorElement>) {
     const form = event.currentTarget.closest("form");
-    for (const name of [...NATIVE_FILTER_FIELD_NAMES, "annualKm"] as const) {
+    for (const name of NATIVE_FILTER_FIELD_NAMES) {
       const field = form?.elements.namedItem(name);
       if (field instanceof HTMLInputElement) field.value = "";
     }
-    for (const name of ["includeMotorcycles", "financeEnabled"] as const) {
-      const checkbox = form?.querySelector<HTMLInputElement>(`input[name="${name}"][type="checkbox"]`);
-      if (checkbox) checkbox.checked = false;
-    }
+    const includeMotorcycles = form?.querySelector<HTMLInputElement>(
+      'input[name="includeMotorcycles"][type="checkbox"]',
+    );
+    if (includeMotorcycles) includeMotorcycles.checked = false;
     setBodyType([]);
     setPowertrain([]);
     setMake([]);
     setTransmission([]);
     setRegion([]);
-    setInsuranceCoverType("");
-    setFinanceEnabled(false);
-    setDepositError(false);
     setNativeHasFilters(false);
   }
 

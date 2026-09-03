@@ -206,6 +206,12 @@ body {
   opacity: 0.6;
   box-shadow: none;
 }
+/* Same gradient as .btn-primary, reused for the ListingCard watchlist
+ * corner fold so its "solid accent" folded state matches the app's other
+ * accent-filled surfaces instead of a flat color. */
+.corner-fold {
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent) 60%, var(--accent-2)));
+}
 .btn-ghost {
   background: color-mix(in oklch, var(--surface-2) 80%, transparent);
   border: 1px solid var(--border);

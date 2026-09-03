@@ -22,12 +22,18 @@ export function SelectField({
   options,
   placeholder = "Any",
   className,
+  showPlaceholderOption = true,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: SelectFieldOption[];
   placeholder?: string;
   className?: string;
+  /** Set false when every real option is meaningful and there's no "unset"
+   * state to offer (e.g. sort order always has a value) — otherwise the
+   * blank placeholder shows up as a selectable "Any"-style entry that
+   * doesn't make sense for this field. */
+  showPlaceholderOption?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -111,7 +117,9 @@ export function SelectField({
           onKeyDown={handleListKeyDown}
           className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-surface p-1 text-sm shadow-lg"
         >
-          <SelectOptionItem label={placeholder} selected={value === ""} onSelect={() => select("")} muted />
+          {showPlaceholderOption && (
+            <SelectOptionItem label={placeholder} selected={value === ""} onSelect={() => select("")} muted />
+          )}
           {options.map((o) => (
             <SelectOptionItem key={o.value} label={o.label} selected={value === o.value} onSelect={() => select(o.value)} />
           ))}
