@@ -29,7 +29,19 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6d5bff",
+  // Matches --background for each scheme. Deliberately two static,
+  // media-scoped tags (the browser itself picks between them via
+  // prefers-color-scheme) rather than one tag mutated by JS to follow our
+  // in-app [data-theme] override — mutating a Next-managed meta tag before
+  // hydration made React insert a second, conflicting copy of it instead of
+  // reconciling. This covers the common case (device theme matches app
+  // theme); it won't follow a manual light/dark override that disagrees
+  // with the OS setting, which is an acceptable gap for what's otherwise
+  // native OS chrome (Android status/nav bar), not in-app UI.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b14" },
+  ],
 };
 
 // Resolves and applies the theme before first paint, always as an explicit

@@ -9,6 +9,15 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
+  /* Native UI chrome (scrollbars, form controls, and — in an installed PWA
+   * on Android — the system status/navigation bar background) defaults to
+   * light without this, regardless of our own [data-theme] CSS vars, which
+   * is why those bars stayed bright white even in dark mode. `light dark`
+   * is the pre-hydration fallback (matches OS preference before the toggle
+   * script below sets an explicit value); the [data-theme] overrides pin it
+   * to whatever the user actually picked. */
+  color-scheme: light dark;
+
   --background: #f7f7fb;
   --surface: #ffffff;
   --surface-2: #f1f1f8;
@@ -30,6 +39,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --background: #0b0b14;
     --surface: #131320;
     --surface-2: #1a1a2a;
@@ -49,7 +59,12 @@
   }
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --background: #0b0b14;
   --surface: #131320;
   --surface-2: #1a1a2a;
