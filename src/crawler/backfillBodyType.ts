@@ -3,6 +3,7 @@ import { db } from "../db/client";
 import { listings, dealers } from "../db/schema";
 import { fetchDetailBodyType } from "../lib/crawler/adapters/motorcentral";
 import { mapWithConcurrency } from "../lib/crawler/concurrency";
+import { inferBodyTypeFromMake } from "../lib/crawler/normalize";
 
 /**
  * One-off (re-runnable) backfill for Motorcentral listings whose body type
@@ -17,7 +18,7 @@ const FETCH_CONCURRENCY = 10;
 
 async function main() {
   const rows = await db
-    .select({ id: listings.id, url: listings.url })
+    .select({ id: listings.id, url: listings.url, make: listings.make })
     .from(listings)
     .innerJoin(dealers, eq(listings.dealerId, dealers.id))
     .where(and(isNull(listings.bodyType), eq(dealers.platform, "motorcentral"), eq(listings.status, "active")));
@@ -27,7 +28,11 @@ async function main() {
   let updated = 0;
   await mapWithConcurrency(rows, FETCH_CONCURRENCY, async (row) => {
     try {
-      const bodyType = await fetchDetailBodyType(row.url);
+      // The detail page's own Body field can be blank (e.g. Horwin e-scooter
+      // listings on EV City) rather than just phrased in a word
+      // normalizeBodyType() doesn't recognize yet — fall back to the
+      // make-based inference for those instead of leaving them null forever.
+      const bodyType = (await fetchDetailBodyType(row.url)) || inferBodyTypeFromMake(row.make);
       if (bodyType) {
         await db.update(listings).set({ bodyType }).where(eq(listings.id, row.id));
         updated++;

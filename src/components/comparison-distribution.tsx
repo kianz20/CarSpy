@@ -1,7 +1,5 @@
 "use client";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-
 type DistributionBarProps = {
   label: string;
   /** Which metric this bar shows — picks the wording for the cheapest/most
@@ -19,9 +17,37 @@ type DistributionBarProps = {
   maxFormatted: string;
   /** Number of similar listings the min/avg/max were computed from. With
    * only one, min/avg/max are all the same value, which makes both the
-   * "% through the range" and "% above/below average" figures meaningless. */
+   * position on the range and the "% above/below average" figures
+   * meaningless, so the bar is dropped and only a sentence is shown. */
   count: number;
 };
+
+/** Keep an absolutely-positioned label from hanging off either end of the
+ * track — at 0% or 100% a centred label would be half-clipped. */
+function clampLabelPosition(percent: number) {
+  return Math.min(92, Math.max(8, percent));
+}
+
+/** Plain-English version of "you are N% of the way through the range" —
+ * driven by distance from the average (in %), the same comparison the chip
+ * above uses, rather than raw position in the min–max range. Those two can
+ * disagree on a skewed distribution: a few high outliers stretch the range
+ * so a listing sits in the "cheaper than most" third by range position while
+ * still being above average, which reads as a contradiction. */
+function positionSentence(pctFromAvg: number, isAbove: boolean, isBelow: boolean, metric: "price" | "mileage") {
+  const cheaper = metric === "price" ? "Cheaper" : "Lower mileage";
+  const pricier = metric === "price" ? "Pricier" : "Higher mileage";
+
+  if (isBelow) {
+    if (pctFromAvg >= 20) return `${cheaper} than most`;
+    return `${cheaper} than average`;
+  }
+  if (isAbove) {
+    if (pctFromAvg >= 20) return `${pricier} than most`;
+    return `${pricier} than average`;
+  }
+  return "Right at the average";
+}
 
 export function DistributionBar({
   label,
@@ -40,147 +66,51 @@ export function DistributionBar({
   const isBelow = current < avg;
   const isAbove = current > avg;
   const hasRange = max > min;
-  const isCheapestOrLowest = hasRange && current === min;
-  const isMostExpensiveOrHighest = hasRange && current === max;
 
-  // Simple data for visualization - show the range with key points
-  const data = [
-    { position: "Min", value: min },
-    { position: "Avg", value: avg },
-    { position: "Max", value: max },
-  ];
+  // Both metrics read the same way: under the average is the good news.
+  const stateColor = isBelow
+    ? "var(--color-success)"
+    : isAbove
+      ? "var(--color-warning)"
+      : "var(--color-info)";
+
+  const toPercent = (value: number) =>
+    hasRange ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 50;
+  const currentPercent = toPercent(current);
+  const avgPercent = toPercent(avg);
+
+  const isCheapestOrLowest = hasRange && current <= min;
+  const isMostExpensiveOrHighest = hasRange && current >= max;
+
+  const summary = isCheapestOrLowest
+    ? metric === "price"
+      ? `This is the cheapest ${model} being sold — others go up to ${maxFormatted}`
+      : `This is the lowest mileage ${model} being sold — others go up to ${maxFormatted}`
+    : isMostExpensiveOrHighest
+      ? metric === "price"
+        ? `This is the most expensive ${model} being sold — others start from ${minFormatted}`
+        : `This is the highest mileage ${model} being sold — others start from ${minFormatted}`
+      : hasRange
+        ? `${positionSentence(
+            avg === 0 ? 0 : (Math.abs(current - avg) / avg) * 100,
+            isAbove,
+            isBelow,
+            metric,
+          )} — similar listings are between ${minFormatted} and ${maxFormatted}`
+        : count > 1
+          ? `Based on ${count - 1} other similar ${count - 1 === 1 ? "listing" : "listings"}, all at ${avgFormatted}`
+          : "No other similar listings to compare against yet";
 
   return (
     <div className="space-y-4 rounded-lg border border-border/50 bg-surface-2/50 px-5 py-4">
-      {/* Header with values */}
-      <div>
-        <div className="flex items-baseline justify-between gap-4 mb-3">
-          <div>
-            <span className="block text-sm font-semibold text-muted mb-1">{label}</span>
-            <span className="text-2xl font-bold text-accent">{currentFormatted}</span>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted mb-2">Value compared to:</div>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-muted">Avg: </span>
-                <span className="font-semibold">{avgFormatted}</span>
-              </div>
-              <div>
-                <span className="text-muted">Similar listings are between </span>
-                <span className="font-semibold">{minFormatted}</span>  <span className="text-muted">and</span> <span className="font-semibold">{maxFormatted}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="w-full" style={{ height: "200px" }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 30, right: 150, left: 20, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-            <XAxis
-              dataKey="position"
-              tick={{ fontSize: 14, fontWeight: 500 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              width={60}
-              domain={[Math.min(min, current), Math.max(max, current)]}
-              tickFormatter={(value) => {
-                if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
-                if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                return value.toString();
-              }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--color-surface-2)",
-                border: "2px solid var(--color-border)",
-                borderRadius: "8px",
-                padding: "10px",
-              }}
-              labelStyle={{ color: "var(--color-foreground)" }}
-              formatter={(value) => {
-                const num = Number(value);
-                if (num === min) return minFormatted;
-                if (num === max) return maxFormatted;
-                if (num === avg) return avgFormatted;
-                return value;
-              }}
-            />
-
-            {/* Line showing the range */}
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-muted)"
-              strokeWidth={2}
-              dot={{ fill: "var(--color-muted)", r: 5 }}
-              activeDot={{ r: 7 }}
-            />
-
-            {/* Reference line for average */}
-            <ReferenceLine
-              y={avg}
-              stroke="var(--color-muted)"
-              strokeDasharray="6 4"
-              strokeWidth={2}
-              opacity={0.6}
-            />
-
-            {/* Reference line for current - prominent */}
-            <ReferenceLine
-              y={current}
-              stroke={isBelow ? "#10b981" : isAbove ? "#f59e0b" : "#3b82f6"}
-              strokeWidth={4}
-              strokeOpacity={0.8}
-              label={{
-                value: `You: ${currentFormatted}`,
-                position: "right",
-                fill: isBelow ? "#10b981" : isAbove ? "#f59e0b" : "#3b82f6",
-                fontSize: 14,
-                fontWeight: 700,
-                offset: 5,
-              }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Status indicator */}
-      <div className="flex items-center justify-between gap-4 pt-4 pb-1 border-t border-border/30">
-        <div className="text-sm text-muted">
-          {isCheapestOrLowest ? (
-            metric === "price" ? (
-              <>This is the cheapest {model} being sold</>
-            ) : (
-              <>This is the lowest mileage {model} being sold</>
-            )
-          ) : isMostExpensiveOrHighest ? (
-            metric === "price" ? (
-              <>This is the most expensive {model} being sold</>
-            ) : (
-              <>This is the highest mileage {model} being sold</>
-            )
-          ) : hasRange ? (
-            <>
-              You are <span className="font-semibold">{Math.min(100, Math.max(0, ((current - min) / (max - min)) * 100)).toFixed(0)}%</span> of the way through the range
-            </>
-          ) : count > 1 ? (
-            <>Based on {count - 1} other similar {count - 1 === 1 ? "listing" : "listings"}, all at {avgFormatted}</>
-          ) : (
-            <>No other similar listings to compare against yet</>
-          )}
+      {/* Headline: this listing's value, and how far it sits from average */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div>
+          <span className="block text-sm font-semibold text-muted">{label}</span>
+          <span className="text-2xl font-bold text-accent">{currentFormatted}</span>
         </div>
         <div
-          className={`flex items-center gap-2 rounded-full px-3 py-1 font-semibold text-sm self-center ${
+          className={`flex items-center gap-1.5 self-center rounded-full px-3 py-1 text-sm font-semibold ${
             isBelow
               ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
               : isAbove
@@ -188,17 +118,78 @@ export function DistributionBar({
                 : "bg-blue-500/20 text-blue-700 dark:text-blue-300"
           }`}
         >
-          <span>{isBelow ? "↓" : isAbove ? "↑" : "="}</span>
+          <span aria-hidden>{isBelow ? "↓" : isAbove ? "↑" : "="}</span>
           <span>
             {isBelow
-              ? `${(((avg - current) / avg) * 100).toFixed(0)}% below`
+              ? `${(((avg - current) / avg) * 100).toFixed(0)}% below average`
               : isAbove
-                ? `${(((current - avg) / avg) * 100).toFixed(0)}% above`
-                : "At"}
-            {!(!isBelow && !isAbove) && " average"}
+                ? `${(((current - avg) / avg) * 100).toFixed(0)}% above average`
+                : "At average"}
           </span>
         </div>
       </div>
+
+      {hasRange && (
+        <div>
+          {/* Average marker label, above the track */}
+          <div className="relative h-5">
+            <span
+              className="absolute -translate-x-1/2 whitespace-nowrap text-[11px] text-muted"
+              style={{ left: `${clampLabelPosition(avgPercent)}%` }}
+            >
+              Average {avgFormatted}
+            </span>
+          </div>
+
+          <div
+            className="relative h-2.5 rounded-full"
+            role="img"
+            aria-label={`${label} ${currentFormatted}. Similar listings range from ${minFormatted} to ${maxFormatted}, averaging ${avgFormatted}.`}
+            style={{
+              background: "color-mix(in oklab, var(--color-accent) 18%, var(--color-surface))",
+            }}
+          >
+            {/* Average tick */}
+            <div
+              className="absolute -top-1 h-[18px] w-0.5 -translate-x-1/2 rounded-full bg-muted/70"
+              style={{ left: `${avgPercent}%` }}
+            />
+            {/* This listing */}
+            <div
+              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{
+                left: `${currentPercent}%`,
+                background: stateColor,
+                boxShadow: "0 0 0 3px var(--color-surface)",
+              }}
+            />
+          </div>
+
+          {/* "This listing" label, below the dot */}
+          <div className="relative h-5">
+            <span
+              className="absolute mt-1.5 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold"
+              style={{ left: `${clampLabelPosition(currentPercent)}%`, color: stateColor }}
+            >
+              This listing
+            </span>
+          </div>
+
+          {/* Range ends */}
+          <div className="flex items-baseline justify-between gap-4 text-[11px] text-muted">
+            <span>
+              <span className="font-semibold text-foreground">{minFormatted}</span>{" "}
+              {metric === "price" ? "cheapest" : "lowest"}
+            </span>
+            <span className="text-right">
+              <span className="font-semibold text-foreground">{maxFormatted}</span>{" "}
+              {metric === "price" ? "priciest" : "highest"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <p className="border-t border-border/30 pt-3 text-sm text-muted">{summary}</p>
     </div>
   );
 }

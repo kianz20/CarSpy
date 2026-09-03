@@ -3,6 +3,7 @@ import { db } from "@/db/client";
 import { listings, listingPriceHistory } from "@/db/schema";
 import type { NormalizedListing } from "./types";
 import { getCanonicalMakeMap, resolveMakeCasing } from "./makeCasing";
+import { inferBodyTypeFromMake, isNonVehicleListing } from "./normalize";
 
 // See PLAN.md §5a: a listing missing from a crawl isn't immediately delisted
 // (transient site hiccups happen) — it's marked "unconfirmed" and only
@@ -32,8 +33,19 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 export async function ingestDealerListings(
   dealerId: number,
-  scraped: NormalizedListing[],
+  allScraped: NormalizedListing[],
 ): Promise<IngestSummary> {
+  // Trailers etc. show up in some dealers' inventory feeds with no way to
+  // tell them apart from cars except the make (see normalize.ts) — drop them
+  // here rather than per-adapter so every platform gets the same filter.
+  // Same per-adapter-agnostic reasoning as the trailer filter above: a
+  // dealer's own body-type field can come back blank for a motorcycle/
+  // scooter-only make (e.g. Horwin), which would otherwise slip past the
+  // "include motorcycles" filter — see normalize.ts's inferBodyTypeFromMake.
+  const scraped = allScraped
+    .filter((item) => !isNonVehicleListing(item.make))
+    .map((item) => (item.bodyType ? item : { ...item, bodyType: inferBodyTypeFromMake(item.make) }));
+
   const summary: IngestSummary = {
     created: 0,
     updated: 0,
