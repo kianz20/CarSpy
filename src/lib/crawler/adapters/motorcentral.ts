@@ -113,12 +113,22 @@ function parseListingPage(html: string, origin: string): ListingPageCard[] {
   return cards;
 }
 
+type DetailPageData = {
+  bodyType?: string;
+  imageUrl?: string;
+};
+
 // Exported for the one-off body-type backfill script (see
 // scripts/backfillBodyType.ts) — re-fetches this same detail-page field for
 // already-known listings whose body type came back unrecognized on first
 // sighting (e.g. the "Motorbike" case fixed in normalize.ts), since the
 // regular crawl only fetches the detail page once, on first sighting.
 export async function fetchDetailBodyType(url: string): Promise<string | undefined> {
+  const data = await fetchDetailPageData(url);
+  return data.bodyType;
+}
+
+export async function fetchDetailPageData(url: string): Promise<DetailPageData> {
   const html = await fetchHtml(url);
 
   // Template tiers differ in what they embed, not just how they look: Team
@@ -127,17 +137,29 @@ export async function fetchDetailBodyType(url: string): Promise<string | undefin
   // confirmed by checking both directly, not assumed from one working.
   // Try the more robust JSON-LD source first, fall back to the label/value
   // table scraping that's needed for templates without it.
+  let bodyType: string | undefined;
   const jsonLdMatch = html.match(/"bodyType":\s*"([^"]*)"/);
-  if (jsonLdMatch) return normalizeBodyType(jsonLdMatch[1]);
+  if (jsonLdMatch) bodyType = normalizeBodyType(jsonLdMatch[1]);
 
-  const $ = cheerio.load(html);
-  let bodyRaw: string | undefined;
-  $(".title.ellipsis").each((_, el) => {
-    if ($(el).text().trim() === "Body") {
-      bodyRaw = $(el).next().text().replace(/\s+/g, " ").trim();
-    }
-  });
-  return normalizeBodyType(bodyRaw);
+  if (!bodyType) {
+    const $ = cheerio.load(html);
+    let bodyRaw: string | undefined;
+    $(".title.ellipsis").each((_, el) => {
+      if ($(el).text().trim() === "Body") {
+        bodyRaw = $(el).next().text().replace(/\s+/g, " ").trim();
+      }
+    });
+    bodyType = normalizeBodyType(bodyRaw);
+  }
+
+  // Extract image from og:image meta tag — listing cards load images
+  // dynamically via JS, so the static listing page has no img src. The
+  // detail page's og:image always has it.
+  let imageUrl: string | undefined;
+  const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+  if (ogImageMatch) imageUrl = ogImageMatch[1];
+
+  return { bodyType, imageUrl };
 }
 
 /**
@@ -175,18 +197,19 @@ export async function crawlMotorcentralDealer(
     await sleep(REQUEST_DELAY_MS);
   }
 
-  const bodyTypesByExternalId = new Map<string, string | undefined>();
+  const detailDataByExternalId = new Map<string, DetailPageData>();
   const newCards = cards.filter((card) => !existingExternalIds.has(card.externalId));
   await mapWithConcurrency(newCards, DETAIL_FETCH_CONCURRENCY, async (card) => {
     try {
-      bodyTypesByExternalId.set(card.externalId, await fetchDetailBodyType(card.url));
+      detailDataByExternalId.set(card.externalId, await fetchDetailPageData(card.url));
     } catch {
-      bodyTypesByExternalId.set(card.externalId, undefined); // don't let one bad detail page fail the whole crawl
+      detailDataByExternalId.set(card.externalId, {}); // don't let one bad detail page fail the whole crawl
     }
   });
 
   return cards.map((card) => {
     const { year, make, model, variant } = parseVehicleTitle(card.rawTitle);
+    const detailData = detailDataByExternalId.get(card.externalId) || {};
     return {
       externalId: card.externalId,
       url: card.url,
@@ -196,11 +219,13 @@ export async function crawlMotorcentralDealer(
       variant,
       engine: card.engine,
       transmission: card.transmission,
-      bodyType: bodyTypesByExternalId.get(card.externalId),
+      bodyType: detailData.bodyType,
       powertrain: card.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,
-      imageUrl: card.imageUrl,
+      // Prefer the detail page's image (extracted from og:image) over the
+      // listing card's static-HTML image (which may not exist if loaded via JS)
+      imageUrl: detailData.imageUrl || card.imageUrl,
     };
   });
 }
