@@ -14,6 +14,11 @@ export type OwnershipCostInput = {
   /** Free-text engine displacement (e.g. "1998cc") — refines the body-type
    * fuel-consumption bracket when known. See consumption.ts. */
   engine?: string;
+  /** Real per-variant L/100km from vehicleSpecs, already matched by the
+   * caller (see vehicleSpecMatch.ts) — takes priority over the body-type
+   * bracket when present. Undefined for the ~vast majority of listings not
+   * covered by the curated vehicleSpecs table yet. */
+  matchedFuelEconomyL100km?: number;
   price: number;
   /** Current odometer reading — used to flag above/below-average wear for the
    * vehicle's age in the repairs estimate. Omit if unknown. */
@@ -65,7 +70,13 @@ export function estimate3YearOwnershipCost(
   const totalKm = annualKm * ownershipYears;
 
   const { interestPaid, loanAmount } = estimateFinanceCost(listing.price, ownershipYears * 12, options);
-  const { total: fuelAndRuc } = estimateFuelCost(listing.bodyType, listing.powertrain, totalKm, listing.engine);
+  const { total: fuelAndRuc } = estimateFuelCost(
+    listing.bodyType,
+    listing.powertrain,
+    totalKm,
+    listing.engine,
+    listing.matchedFuelEconomyL100km,
+  );
   const servicingItems = estimateServicingCost(listing.powertrain, listing.bodyType, annualKm, ownershipYears);
   const insuranceCoverType = options.insuranceCoverType ?? "comprehensive";
   const insurance = estimateAnnualInsurancePremium(listing.price, insuranceCoverType) * ownershipYears;
@@ -91,6 +102,7 @@ export function estimate3YearOwnershipCost(
 
 export * from "./constants";
 export * from "./consumption";
+export * from "./vehicleSpecMatch";
 export * from "./finance";
 export * from "./fuel";
 export * from "./servicing";

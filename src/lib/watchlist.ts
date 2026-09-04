@@ -1,6 +1,6 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { watchlistItems, listings, dealers } from "@/db/schema";
+import { watchlistItems, listings, dealers, userSettings } from "@/db/schema";
 import type { ListingCardData } from "@/components/listing-card";
 
 export async function getWatchlistedListingIds(userId: number): Promise<Set<number>> {
@@ -29,6 +29,29 @@ export async function removeFromWatchlist(userId: number, listingId: number): Pr
   await db
     .delete(watchlistItems)
     .where(and(eq(watchlistItems.userId, userId), eq(watchlistItems.listingId, listingId)));
+}
+
+/** Global toggle covering every listing the user watchlists — not a
+ * per-item setting (see schema.ts). No row yet = never turned it on. */
+export async function getEmailOnPriceDropAlerts(userId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ enabled: userSettings.emailOnPriceDropAlerts })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId));
+  return row?.enabled ?? false;
+}
+
+/** Only touches this one flag — unlike saveUserDefaults (settings.ts), which
+ * overwrites the whole ownership-defaults row, this must never reset a
+ * user's saved ownershipYears/annualKm/etc. as a side effect. */
+export async function setEmailOnPriceDropAlerts(userId: number, enabled: boolean): Promise<void> {
+  await db
+    .insert(userSettings)
+    .values({ userId, emailOnPriceDropAlerts: enabled })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: { emailOnPriceDropAlerts: enabled, updatedAt: new Date() },
+    });
 }
 
 /** Watchlisted listings for a user, in the same shape page.tsx builds for

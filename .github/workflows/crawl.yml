@@ -28,4 +28,9 @@ jobs:
       - name: Run crawl
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # For price-drop watchlist alerts (src/lib/priceDropAlerts.ts) — a
+          # crawl still runs fine without these, it just can't send email.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: npm run crawl

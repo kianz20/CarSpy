@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
-import { addToWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { addToWatchlist, removeFromWatchlist, setEmailOnPriceDropAlerts } from "@/lib/watchlist";
 
 export type ToggleWatchlistResult = { ok: true; isWatchlisted: boolean } | { ok: false; error: "not_authenticated" };
 
@@ -30,4 +30,18 @@ export async function toggleWatchlistAction(
   revalidatePath("/watchlist");
 
   return { ok: true, isWatchlisted: !currentlyWatchlisted };
+}
+
+export type SetEmailOnPriceDropResult = { ok: true } | { ok: false; error: "not_authenticated" };
+
+/** One global switch for the whole watchlist, not a per-item toggle — see
+ * schema.ts's userSettings.emailOnPriceDropAlerts. */
+export async function setEmailOnPriceDropAlertsAction(enabled: boolean): Promise<SetEmailOnPriceDropResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "not_authenticated" };
+
+  await setEmailOnPriceDropAlerts(user.id, enabled);
+  revalidatePath("/watchlist");
+
+  return { ok: true };
 }

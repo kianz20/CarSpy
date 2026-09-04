@@ -43,6 +43,7 @@ export function OwnershipBreakdown({
   bodyType,
   powertrain,
   engine,
+  matchedFuelEconomyL100km,
   make,
   year,
   mileageKm,
@@ -55,6 +56,11 @@ export function OwnershipBreakdown({
   bodyType: string | null;
   powertrain: string | null;
   engine?: string | null;
+  /** Real per-variant L/100km from vehicleSpecs, already matched by the page
+   * (see vehicleSpecMatch.ts) — must be the same value passed into the
+   * ownership-cost calc that produced `breakdown`, so the displayed
+   * consumption figure and the cost it drove stay consistent. */
+  matchedFuelEconomyL100km?: number;
   make: string;
   year: number | null;
   mileageKm?: number | null;
@@ -71,6 +77,7 @@ export function OwnershipBreakdown({
     bodyType ?? undefined,
     powertrain ?? undefined,
     engine ?? undefined,
+    matchedFuelEconomyL100km,
   );
   const rucRate =
     RUC_PER_1000KM[(powertrain as keyof typeof RUC_PER_1000KM) ?? "petrol"] ??
@@ -202,16 +209,24 @@ export function OwnershipBreakdown({
         const consumptionText = consumption.kwhPer100Km
           ? `${consumption.kwhPer100Km} kWh/100km at ${formatUnitPrice(ELECTRICITY_PRICE_PER_KWH)}/kWh`
           : `${consumption.litresPer100Km?.toFixed(1)} L/100km at ${formatUnitPrice(powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE)}/L`;
-        // Only claim the adjustment when the engine field actually parsed to
-        // a displacement (see consumption.ts's parseEngineLitres) — some
-        // listings' engine text has no "cc" figure at all (e.g. just power,
-        // "180kW"), where no adjustment was actually applied.
-        const engineMatch = !consumption.kwhPer100Km ? engine?.match(/(\d+)\s*cc/i) : undefined;
+        // consumption.ts only applies matchedFuelEconomyL100km for non-EV
+        // powertrains — mirror that condition here so the copy matches what
+        // was actually used, not just whether a match happened to exist.
+        const usedMatchedSpec = matchedFuelEconomyL100km !== undefined && powertrain !== "ev";
+        // Only claim the engine-size adjustment when it actually applied —
+        // never true for a matched real-world figure (bypasses the bracket
+        // entirely), and only when the engine field parsed to a displacement
+        // in the first place (see consumption.ts's parseEngineLitres — some
+        // listings' engine text has no "cc" figure at all, e.g. just power,
+        // "180kW").
+        const engineMatch = !consumption.kwhPer100Km && !usedMatchedSpec ? engine?.match(/(\d+)\s*cc/i) : undefined;
         const bullets = [
           isMultiYear
             ? `Based on ${formatNumber(effectiveAnnualKm)} km/year (${formatNumber(totalKm)} km over ${ownershipYearsLabel})`
             : `Based on ${formatNumber(effectiveAnnualKm)} km/year`,
-          `Estimated at ${consumptionText} for this body type/powertrain`,
+          usedMatchedSpec
+            ? `Official fuel economy of ${consumptionText} for this exact make/model, from NZTA's fuel economy rating (VEEEL)`
+            : `Estimated at ${consumptionText} for this body type/powertrain`,
           ...(engineMatch ? [`Adjusted for its ${(Number(engineMatch[1]) / 1000).toFixed(1)}L engine`] : []),
           // Petrol/hybrid pay for road funding via fuel excise at the pump
           // instead — worth a bullet only when RUC actually applies here.

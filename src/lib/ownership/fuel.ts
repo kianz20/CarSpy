@@ -18,8 +18,9 @@ export function estimateFuelCost(
   powertrain: string | undefined,
   totalKm: number,
   engine?: string,
+  matchedFuelEconomyL100km?: number,
 ): { fuelCost: number; rucCost: number; total: number } {
-  const { litresPer100Km, kwhPer100Km } = estimateConsumption(bodyType, powertrain, engine);
+  const { litresPer100Km, kwhPer100Km } = estimateConsumption(bodyType, powertrain, engine, matchedFuelEconomyL100km);
 
   const fuelPricePerLitre = powertrain === "diesel" ? DIESEL_PRICE_PER_LITRE : PETROL_PRICE_PER_LITRE;
   const litreCost = litresPer100Km ? (litresPer100Km / 100) * totalKm * fuelPricePerLitre : 0;

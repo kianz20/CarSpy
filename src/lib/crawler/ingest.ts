@@ -17,12 +17,19 @@ const MISSED_CRAWLS_BEFORE_DELISTED = 2;
 // biggest dealers, to keep any one query's parameter count reasonable.
 const BATCH_SIZE = 500;
 
+export type PriceDrop = { listingId: number; oldPrice: number; newPrice: number };
+
 export type IngestSummary = {
   created: number;
   updated: number;
   priceChanges: number;
   markedUnconfirmed: number;
   markedDelisted: number;
+  /** The subset of priceChanges that went down, not up — for
+   * priceDropAlerts.ts to email watchlisters about. Populated eagerly
+   * (small array, one crawl's worth of drops for one dealer) rather than
+   * re-diffed later, since the old/new prices are already in hand here. */
+  priceDrops: PriceDrop[];
 };
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -52,6 +59,7 @@ export async function ingestDealerListings(
     priceChanges: 0,
     markedUnconfirmed: 0,
     markedDelisted: 0,
+    priceDrops: [],
   };
 
   // Only the columns actually used below (price-change diffing, the
@@ -145,9 +153,14 @@ export async function ingestDealerListings(
       } else {
         summary.updated++;
         const prior = existingByExternalId.get(row.externalId);
-        if (prior && Number(prior.price) !== Number(row.price)) {
-          summary.priceChanges++;
-          priceHistoryRows.push({ listingId: row.id, price: row.price, observedAt: now });
+        if (prior) {
+          const oldPrice = Number(prior.price);
+          const newPrice = Number(row.price);
+          if (oldPrice !== newPrice) {
+            summary.priceChanges++;
+            priceHistoryRows.push({ listingId: row.id, price: row.price, observedAt: now });
+            if (newPrice < oldPrice) summary.priceDrops.push({ listingId: row.id, oldPrice, newPrice });
+          }
         }
       }
     }

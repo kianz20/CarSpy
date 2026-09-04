@@ -3,8 +3,12 @@ import { db } from "@/db/client";
 import { listings, dealers, vehicleModelDescriptions, listingPriceHistory } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
 import { isNationwide, NZ_REGIONS, parseDealerRegions } from "@/lib/regions";
+import { newRequestId, timed } from "@/lib/logging/timing";
 import {
   estimate3YearOwnershipCost,
+  loadVehicleSpecs,
+  matchVehicleSpec,
+  fuelEconomyFromSpec,
   type FinanceOptions,
   type InsuranceCoverType,
 } from "@/lib/ownership";
@@ -72,7 +76,10 @@ const TOTAL_SORT_CANDIDATE_MULTIPLIER = 10;
  * filter to the actual raw dealer.region values that belong to it (plus any
  * "National" dealer, which covers every region). */
 async function resolveRegionRawValues(regions: string[]): Promise<string[]> {
-  const rows = await db.selectDistinct({ region: dealers.region }).from(dealers).where(sql`${dealers.region} is not null`);
+  const reqId = newRequestId("resolveRegionRawValues");
+  const rows = await timed(reqId, "selectDistinct dealers.region", () =>
+    db.selectDistinct({ region: dealers.region }).from(dealers).where(sql`${dealers.region} is not null`),
+  );
   return rows
     .map((r) => r.region)
     .filter((raw): raw is string => raw !== null)
@@ -162,12 +169,15 @@ export async function searchListings(
   totalCostOptions: TotalCostSortOptions = {},
   page: number = 1,
 ): Promise<ListingSearchResult> {
+  const reqId = newRequestId("searchListings");
   const clampedPage = Math.min(Math.max(Math.trunc(page) || 1, 1), MAX_PAGE);
-  const conditions = await buildConditions(filters);
+  const conditions = await timed(reqId, "buildConditions", () => buildConditions(filters));
 
   const [rawRows, [{ totalCount }]] = await Promise.all([
-    runSearchQuery(conditions, sort, clampedPage),
-    db.select({ totalCount: count() }).from(listings).innerJoin(dealers, eq(listings.dealerId, dealers.id)).where(conditions),
+    timed(reqId, `runSearchQuery(sort=${sort},page=${clampedPage})`, () => runSearchQuery(conditions, sort, clampedPage)),
+    timed(reqId, "countQuery", () =>
+      db.select({ totalCount: count() }).from(listings).innerJoin(dealers, eq(listings.dealerId, dealers.id)).where(conditions),
+    ),
   ]);
 
   const pageCount = Math.min(Math.max(Math.ceil(totalCount / PAGE_SIZE), 1), MAX_PAGE);
@@ -177,26 +187,35 @@ export async function searchListings(
   }
 
   const offset = (clampedPage - 1) * PAGE_SIZE;
-  const ranked = rawRows
-    .map((row) => {
-      const price = parseFloat(row.listings.price);
-      const ownershipTotal = estimate3YearOwnershipCost(
-        {
-          make: row.listings.make,
-          year: row.listings.year ?? undefined,
-          bodyType: row.listings.bodyType ?? undefined,
-          powertrain: row.listings.powertrain ?? undefined,
-          engine: row.listings.engine ?? undefined,
-          price,
-          mileageKm: row.listings.mileageKm ?? undefined,
-        },
-        totalCostOptions,
-      ).total;
-      return { row, totalCost: price + ownershipTotal };
-    })
-    .sort((a, b) => a.totalCost - b.totalCost)
-    .slice(offset, offset + PAGE_SIZE)
-    .map(({ row }) => row);
+  // One fetch of the (small, cached) vehicleSpecs table for the whole page
+  // of candidates, not one per listing — see vehicleSpecMatch.ts.
+  const vehicleSpecs = await timed(reqId, "loadVehicleSpecs", () => loadVehicleSpecs());
+  const ranked = await timed(reqId, `costAndSort(${rawRows.length} rows)`, async () =>
+    rawRows
+      .map((row) => {
+        const price = parseFloat(row.listings.price);
+        const matchedFuelEconomyL100km = fuelEconomyFromSpec(
+          matchVehicleSpec(vehicleSpecs, row.listings.make, row.listings.model, row.listings.year ?? undefined, row.listings.powertrain ?? undefined),
+        );
+        const ownershipTotal = estimate3YearOwnershipCost(
+          {
+            make: row.listings.make,
+            year: row.listings.year ?? undefined,
+            bodyType: row.listings.bodyType ?? undefined,
+            powertrain: row.listings.powertrain ?? undefined,
+            engine: row.listings.engine ?? undefined,
+            matchedFuelEconomyL100km,
+            price,
+            mileageKm: row.listings.mileageKm ?? undefined,
+          },
+          totalCostOptions,
+        ).total;
+        return { row, totalCost: price + ownershipTotal };
+      })
+      .sort((a, b) => a.totalCost - b.totalCost)
+      .slice(offset, offset + PAGE_SIZE)
+      .map(({ row }) => row),
+  );
 
   return { rows: ranked, totalCount, page: clampedPage, pageCount };
 }

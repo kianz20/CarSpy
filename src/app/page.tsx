@@ -14,6 +14,9 @@ import type { MileageBracketStat } from "@/lib/search/mileageStats";
 import { getCategoryOptions } from "@/lib/taxonomy/query";
 import {
   estimate3YearOwnershipCost,
+  loadVehicleSpecs,
+  matchVehicleSpec,
+  fuelEconomyFromSpec,
   type InsuranceCoverType,
 } from "@/lib/ownership";
 import { SearchForm } from "@/components/search-form";
@@ -29,6 +32,7 @@ import { getWatchlistedListingIds } from "@/lib/watchlist";
 import { parseListParam } from "@/lib/listParams";
 import { getEffectiveDefaults } from "@/lib/settings";
 import { logSearch } from "@/lib/searchAnalytics";
+import { newRequestId, timed } from "@/lib/logging/timing";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -55,6 +59,7 @@ export default async function Home({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const reqId = newRequestId("HomePage");
   const params = await searchParams;
 
   const current: Record<string, string> = {};
@@ -111,16 +116,31 @@ export default async function Home({
     includeMotorcycles: current.includeMotorcycles === "true",
   };
 
-  const [bodyTypes, powertrains, makes, regions, currentUser, defaults, inventoryStats] = await Promise.all([
-    getCategoryOptions("body_type"),
-    getCategoryOptions("powertrain"),
-    getDistinctMakes(),
-    getDistinctRegions(),
-    getCurrentUser(),
-    getEffectiveDefaults(),
-    getInventoryStats(),
-  ]);
-  const watchlistedIds = currentUser ? await getWatchlistedListingIds(currentUser.id) : undefined;
+  const [bodyTypes, powertrains, makes, regions, currentUser, defaults, inventoryStats] = await timed(reqId, "formOptions+user+defaults+stats", () =>
+    Promise.all([
+      getCategoryOptions("body_type"),
+      getCategoryOptions("powertrain"),
+      getDistinctMakes(),
+      getDistinctRegions(),
+      getCurrentUser(),
+      getEffectiveDefaults(),
+      getInventoryStats(),
+    ]),
+  );
+  // Kicked off here rather than awaited immediately — none of these three
+  // depend on anything from the hasSearched block below (watchlistedIds only
+  // needs currentUser, already resolved above; recentPriceDrops only needs
+  // the hasSearched flag from the URL; vehicleSpecs is its own cached
+  // lookup), so letting them run concurrently with that block's DB round
+  // trip instead of strictly before or after it removes a full serial
+  // network round-trip from every page load (see the timing investigation —
+  // each round trip to this Neon compute costs ~300-500ms minimum even
+  // warm, and these were previously back-to-back awaits).
+  const watchlistedIdsPromise = currentUser
+    ? timed(reqId, "getWatchlistedListingIds", () => getWatchlistedListingIds(currentUser.id))
+    : Promise.resolve(undefined);
+  const recentPriceDropsPromise = hasSearched ? Promise.resolve([]) : timed(reqId, "getRecentPriceDrops", () => getRecentPriceDrops(6));
+  const vehicleSpecsPromise = timed(reqId, "loadVehicleSpecs", () => loadVehicleSpecs());
 
   // Falls back to the user's saved settings only when the URL doesn't
   // already say — a submitted search always carries explicit financeEnabled/
@@ -144,15 +164,17 @@ export default async function Home({
   let mileageStats: MileageBracketStat[] = [];
 
   if (hasSearched) {
-    const [searchResult, stats] = await Promise.all([
-      searchListings(
-        filters,
-        sort,
-        { ...financeOptions, annualKm, insuranceCoverType, ownershipYears: defaults.ownershipYears },
-        page,
-      ),
-      getMileageBracketStats(filters),
-    ]);
+    const [searchResult, stats] = await timed(reqId, "searchListings+mileageBracketStats", () =>
+      Promise.all([
+        searchListings(
+          filters,
+          sort,
+          { ...financeOptions, annualKm, insuranceCoverType, ownershipYears: defaults.ownershipYears },
+          page,
+        ),
+        getMileageBracketStats(filters),
+      ]),
+    );
     totalCount = searchResult.totalCount;
     resolvedPage = searchResult.page;
     pageCount = searchResult.pageCount;
@@ -178,10 +200,17 @@ export default async function Home({
     await logSearch(filters, sort, totalCount, currentUser);
   }
 
-  const firstSeenPrices = await getFirstSeenPrices(listingsData.map((l) => l.id));
-  // Only worth fetching for the pre-search page — once there are real
-  // results, the price-drop badges on those cards already cover this.
-  const recentPriceDrops = hasSearched ? [] : await getRecentPriceDrops(6);
+  const [firstSeenPrices, vehicleSpecs, watchlistedIds, recentPriceDrops] = await timed(
+    reqId,
+    "firstSeenPrices+watchlist+priceDrops+specs",
+    () =>
+      Promise.all([
+        getFirstSeenPrices(listingsData.map((l) => l.id)),
+        vehicleSpecsPromise,
+        watchlistedIdsPromise,
+        recentPriceDropsPromise,
+      ]),
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
@@ -318,6 +347,9 @@ export default async function Home({
                             bodyType: listing.bodyType ?? undefined,
                             powertrain: listing.powertrain ?? undefined,
                             engine: listing.engine ?? undefined,
+                            matchedFuelEconomyL100km: fuelEconomyFromSpec(
+                              matchVehicleSpec(vehicleSpecs, listing.make, listing.model, listing.year ?? undefined, listing.powertrain ?? undefined),
+                            ),
                             price: listing.price,
                             mileageKm: listing.mileageKm ?? undefined,
                           },

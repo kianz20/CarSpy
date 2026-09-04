@@ -1,0 +1,1 @@
+ALTER TABLE "watchlist_items" ADD COLUMN "email_on_price_drop" boolean DEFAULT false NOT NULL;

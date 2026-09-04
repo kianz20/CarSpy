@@ -64,6 +64,48 @@
       "when": 1788432927386,
       "tag": "0008_purple_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788502729654,
+      "tag": "0009_premium_hawkeye",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788505769094,
+      "tag": "0010_fixed_calypso",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788505926345,
+      "tag": "0011_same_screwball",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788507576783,
+      "tag": "0012_superb_reptil",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788509629406,
+      "tag": "0013_mean_jubilee",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788560333612,
+      "tag": "0014_mysterious_silverclaw",
+      "breakpoints": true
     }
   ]
 }

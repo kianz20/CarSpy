@@ -6,8 +6,15 @@ import {
   getFirstSeenPrices,
   getSimilarListingStats,
 } from "@/lib/search/listings";
-import { estimate3YearOwnershipCost, type InsuranceCoverType } from "@/lib/ownership";
+import {
+  estimate3YearOwnershipCost,
+  loadVehicleSpecs,
+  matchVehicleSpec,
+  fuelEconomyFromSpec,
+  type InsuranceCoverType,
+} from "@/lib/ownership";
 import { OwnershipBreakdown } from "@/components/ownership-breakdown";
+import { SafetyRating } from "@/components/safety-rating";
 import { getEffectiveDefaults } from "@/lib/settings";
 import { ListingImage } from "@/components/listing-image";
 import { getStockImageUrl } from "@/lib/stockImage";
@@ -90,6 +97,15 @@ export default async function ListingDetailPage({
   const ownershipYears =
     rawOwnershipYears !== undefined ? Math.min(Math.max(Math.round(rawOwnershipYears), 1), 5) : defaults.ownershipYears;
 
+  const vehicleSpecs = await loadVehicleSpecs();
+  const matchedVehicleSpec = matchVehicleSpec(vehicleSpecs, listing.make, listing.model, listing.year ?? undefined, listing.powertrain ?? undefined);
+  const matchedFuelEconomyL100km = fuelEconomyFromSpec(matchedVehicleSpec);
+
+  // Safety star rating (ANCAP/UCSR/VSRR, per VEEEL) — like fuel economy,
+  // only ever real per-variant data from the curated vehicleSpecs table,
+  // never an estimate/guess, so it's simply omitted when there's no match.
+  const safetyStars = matchedVehicleSpec?.safetyStars != null ? Number(matchedVehicleSpec.safetyStars) : undefined;
+
   const ownershipCost = estimate3YearOwnershipCost(
     {
       make: listing.make,
@@ -97,6 +113,7 @@ export default async function ListingDetailPage({
       bodyType: listing.bodyType ?? undefined,
       powertrain: listing.powertrain ?? undefined,
       engine: listing.engine ?? undefined,
+      matchedFuelEconomyL100km,
       price,
       mileageKm: listing.mileageKm ?? undefined,
     },
@@ -191,6 +208,12 @@ export default async function ListingDetailPage({
             <Detail label="Transmission" value={listing.transmission ?? undefined} capitalize />
             <Detail label="Fuel type" value={listing.powertrain ?? undefined} capitalize />
             <Detail label="Vehicle type" value={listing.bodyType?.replace("_", " ")} capitalize />
+            {safetyStars !== undefined && (
+              <div>
+                <div className="text-xs font-semibold text-muted">Safety rating</div>
+                <SafetyRating stars={safetyStars} testLabel={matchedVehicleSpec?.safetyTest ?? undefined} />
+              </div>
+            )}
             <Detail label="Engine" value={listing.engine ? formatEngine(listing.engine) : undefined} />
             <Detail label="Import status" value={listing.importStatus === "nz_new" ? "NZ new" : listing.importStatus === "import" ? "Import" : undefined} />
             <Detail label="VIN" value={listing.vin ?? undefined} />
@@ -237,6 +260,7 @@ export default async function ListingDetailPage({
                   bodyType={listing.bodyType}
                   powertrain={listing.powertrain}
                   engine={listing.engine}
+                  matchedFuelEconomyL100km={matchedFuelEconomyL100km}
                   make={listing.make}
                   year={listing.year}
                   mileageKm={listing.mileageKm}

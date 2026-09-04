@@ -8,8 +8,9 @@ import { crawlAdTorqueEdgeDealer } from "../lib/crawler/adapters/adtorqueedge";
 import { crawlTurnersDealer } from "../lib/crawler/adapters/turners";
 import { crawlTwoCheapCarsDealer } from "../lib/crawler/adapters/twocheapcars";
 import { crawlArmstrongsDealer } from "../lib/crawler/adapters/armstrongs";
-import { ingestDealerListings, getExistingExternalIds } from "../lib/crawler/ingest";
+import { ingestDealerListings, getExistingExternalIds, type PriceDrop } from "../lib/crawler/ingest";
 import { mapWithConcurrency } from "../lib/crawler/concurrency";
+import { sendPriceDropAlerts } from "../lib/priceDropAlerts";
 import type { NormalizedListing } from "../lib/crawler/types";
 
 /**
@@ -50,11 +51,11 @@ const PLATFORMS: Record<string, { adapter: Adapter; listingsPath: string }> = {
   armstrongs: { adapter: crawlArmstrongsDealer, listingsPath: "/content/json/vehicles.json" },
 };
 
-async function crawlOneDealer(dealer: typeof dealers.$inferSelect) {
+async function crawlOneDealer(dealer: typeof dealers.$inferSelect): Promise<PriceDrop[]> {
   const platformConfig = dealer.platform ? PLATFORMS[dealer.platform] : undefined;
   if (!platformConfig) {
     console.log(`[skip] ${dealer.name} — no adapter for platform "${dealer.platform}"`);
-    return;
+    return [];
   }
   const { adapter, listingsPath } = platformConfig;
 
@@ -62,7 +63,7 @@ async function crawlOneDealer(dealer: typeof dealers.$inferSelect) {
   const robotsCheck = await checkRobotsAllowed(listingsUrl);
   if (!robotsCheck.allowed) {
     console.log(`[skip] ${dealer.name} — ${robotsCheck.reason}`);
-    return;
+    return [];
   }
 
   console.log(`[crawl] ${dealer.name} (${dealer.platform}) — ${robotsCheck.reason}`);
@@ -74,14 +75,22 @@ async function crawlOneDealer(dealer: typeof dealers.$inferSelect) {
       `[done] ${dealer.name} — scraped ${scraped.length}, created ${summary.created}, updated ${summary.updated}, ` +
         `price changes ${summary.priceChanges}, unconfirmed ${summary.markedUnconfirmed}, delisted ${summary.markedDelisted}`,
     );
+    return summary.priceDrops;
   } catch (err) {
     console.error(`[error] ${dealer.name} —`, err);
+    return [];
   }
 }
 
 async function run() {
   const activeDealers = await db.select().from(dealers).where(eq(dealers.active, true));
-  await mapWithConcurrency(activeDealers, DEALER_CONCURRENCY, crawlOneDealer);
+  const priceDropsByDealer = await mapWithConcurrency(activeDealers, DEALER_CONCURRENCY, crawlOneDealer);
+  const allPriceDrops = priceDropsByDealer.flat();
+
+  if (allPriceDrops.length > 0) {
+    console.log(`[price-drop-alerts] ${allPriceDrops.length} price drop(s) this run — checking watchlists...`);
+    await sendPriceDropAlerts(allPriceDrops);
+  }
 }
 
 run()

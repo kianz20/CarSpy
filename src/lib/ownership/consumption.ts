@@ -3,8 +3,13 @@
  * (petrol/diesel/hybrid), kWh/100km (EV), or a blended L/100km-equivalent for
  * the petrol portion of a PHEV's driving. These are published-fleet-average
  * ballparks (manufacturer combined-cycle figures skew optimistic vs. real-world
- * use), not per-model figures — Phase 4 doesn't have a per-make/model fuel
- * economy database, so this is a bracket estimate like servicing/insurance/repairs.
+ * use), not per-model figures — a bracket estimate like servicing/insurance/repairs.
+ *
+ * Callers that have a real per-variant figure from vehicleSpecs (curated from
+ * VEEEL/fuelsaver.govt.nz — see vehicleSpecMatch.ts and seedVehicleSpecs.ts)
+ * should pass it as matchedFuelEconomyL100km, which takes priority over the
+ * bracket below. Only ~150 popular make/model/powertrain combos are seeded,
+ * so most listings still fall through to the bracket.
  *
  * The petrol/diesel bracket is additionally nudged by the listing's own
  * engine displacement when known (see adjustForEngineSize below) — a body
@@ -114,7 +119,18 @@ export function estimateConsumption(
   bodyType: string | undefined,
   powertrain: string | undefined,
   engine?: string,
+  // Real per-variant L/100km from vehicleSpecs (see vehicleSpecMatch.ts),
+  // already resolved by the caller — when present this replaces the
+  // body-type bracket outright rather than nudging it, since it's actual
+  // WLTP data for this make/model rather than a fleet-average guess. Not
+  // applied to EV kWh/100km — vehicleSpecs is only seeded with the L/100km
+  // figure (VEEEL's EV economy isn't WLTP-comparable, per its own spec).
+  matchedFuelEconomyL100km?: number,
 ): ConsumptionEstimate {
+  if (matchedFuelEconomyL100km !== undefined && powertrain !== "ev") {
+    return { litresPer100Km: matchedFuelEconomyL100km, kwhPer100Km: powertrain === "phev" ? PHEV_KWH_PER_100KM : undefined };
+  }
+
   // Engine size only tells you anything about an ICE's petrol/diesel burn —
   // not applied to EV kWh/100km (no combustion engine) or PHEV's fixed small
   // backup-engine figure (dominated by how much it's actually driven on

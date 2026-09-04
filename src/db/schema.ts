@@ -8,7 +8,9 @@ import {
   boolean,
   jsonb,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // A dealer/yard site we crawl. One row per dealer, not per site-platform —
 // e.g. each Motorcentral-powered yard is still its own dealer row here.
@@ -67,19 +69,59 @@ export const listings = pgTable(
     firstSeenAt: timestamp("first_seen_at").notNull().defaultNow(),
     lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("listings_dealer_external_id_idx").on(table.dealerId, table.externalId)],
+  (table) => [
+    uniqueIndex("listings_dealer_external_id_idx").on(table.dealerId, table.externalId),
+    // Every search query filters `status = 'active' AND price > 0` (see
+    // buildConditions in src/lib/search/listings.ts) and both the "price"
+    // and "total" sorts order by price on top of that — without an index,
+    // Postgres has no choice but to sequentially scan the entire table for
+    // every search regardless of how selective the other filters are, which
+    // is brutal specifically when the table's pages aren't already cached
+    // (e.g. right after a Neon compute cold-starts). This partial index lets
+    // the common case be answered by an index scan instead.
+    index("listings_active_price_idx")
+      .on(table.price)
+      .where(sql`${table.status} = 'active' and ${table.price} > 0`),
+    index("listings_active_mileage_idx")
+      .on(table.mileageKm)
+      .where(sql`${table.status} = 'active' and ${table.price} > 0`),
+    // One column each rather than a combinatorial set of composite indexes
+    // for every filter combination — Postgres can BitmapAnd several
+    // single-column indexes together for a query that filters on more than
+    // one of these at once, which covers the dropdown filters in
+    // ListingSearchFilters without needing to predict which combinations
+    // users actually pick.
+    index("listings_make_idx").on(table.make),
+    index("listings_body_type_idx").on(table.bodyType),
+    index("listings_powertrain_idx").on(table.powertrain),
+    index("listings_transmission_idx").on(table.transmission),
+    index("listings_year_idx").on(table.year),
+  ],
 );
 
 // Append-only price snapshots. Never deleted — this is the raw material for
 // the depreciation-curve model, independent of whether the listing is still active.
-export const listingPriceHistory = pgTable("listing_price_history", {
-  id: serial("id").primaryKey(),
-  listingId: integer("listing_id")
-    .notNull()
-    .references(() => listings.id),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
-  observedAt: timestamp("observed_at").notNull().defaultNow(),
-});
+export const listingPriceHistory = pgTable(
+  "listing_price_history",
+  {
+    id: serial("id").primaryKey(),
+    listingId: integer("listing_id")
+      .notNull()
+      .references(() => listings.id),
+    price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+    observedAt: timestamp("observed_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Both getFirstSeenPrices (selectDistinctOn(listingId), IN-list of ids,
+    // ordered by observedAt) and getRecentPriceDrops (row_number() over
+    // partition by listing_id order by observed_at desc, across the whole
+    // table) need exactly this ordering per listing — without it, both did
+    // a full sequential scan of every price observation ever recorded, on
+    // every single page load, and that only grows as the crawler keeps
+    // appending history (see src/lib/search/listings.ts).
+    index("listing_price_history_listing_observed_idx").on(table.listingId, table.observedAt),
+  ],
+);
 
 // Canonical body-type / powertrain values, used to populate search dropdowns
 // and to constrain what listings.bodyType / listings.powertrain can contain.
@@ -113,6 +155,34 @@ export const vehicleModelDescriptions = pgTable(
   (table) => [uniqueIndex("vehicle_model_descriptions_make_model_idx").on(table.make, table.model)],
 );
 
+// Curated reference data for a specific vehicle variant (make/model/year
+// band/engine/powertrain), sourced from VEEEL (fuelsaver.govt.nz) and
+// manually seeded for popular models rather than looked up live per listing
+// — most crawled listings carry no VIN/plate to query VEEEL with, but fuel
+// economy, CO2 and safety ratings are properties of the variant, not the
+// individual vehicle, so one curated row here backs every matching listing.
+// Matched against a listing by make/model/year falling within
+// [yearFrom, yearTo] and engine/powertrain. Damage/recall warnings are
+// deliberately NOT modelled here — those are per-VIN, not per-variant, and
+// need a live lookup against a specific vehicle rather than a cached row.
+export const vehicleSpecs = pgTable("vehicle_specs", {
+  id: serial("id").primaryKey(),
+  make: text("make").notNull(),
+  model: text("model").notNull(),
+  yearFrom: integer("year_from").notNull(),
+  yearTo: integer("year_to"), // null = still current/open-ended
+  engine: text("engine"), // e.g. '1998cc', matched loosely against listings.engine
+  powertrain: text("powertrain"), // 'petrol' | 'diesel' | 'hybrid' | 'ev' | 'phev' — same cc can differ a lot by powertrain
+  fuelEconomyL100km: numeric("fuel_economy_l_100km", { precision: 4, scale: 1 }),
+  co2GramsKm: integer("co2_grams_km"),
+  safetyStars: numeric("safety_stars", { precision: 2, scale: 1 }), // supports half-stars, e.g. 4.5
+  safetyTest: text("safety_test"), // e.g. '2021 ANCAP rating for 21+ models'
+  veeelReference: text("veeel_reference"), // VEEEL's own reference/traceability code for the source vehicle used to derive this row
+  notes: text("notes"), // how this row was sourced, e.g. 'VIN from Turners listing #28304825'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const users = pgTable(
   "users",
   {
@@ -120,6 +190,10 @@ export const users = pgTable(
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    // Null = not yet verified. Added directly to the database ahead of
+    // schema.ts at some point (found via drift when migrating off Neon);
+    // reconciled here so Drizzle actually tracks it going forward.
+    emailVerifiedAt: timestamp("email_verified_at"),
   },
   (table) => [uniqueIndex("users_email_idx").on(table.email)],
 );
@@ -178,6 +252,10 @@ export const userSettings = pgTable("user_settings", {
   annualKm: integer("annual_km").notNull().default(12000),
   financeEnabled: boolean("finance_enabled").notNull().default(false),
   deposit: numeric("deposit", { precision: 10, scale: 2 }),
+  // Global, not per-watchlist-item — one on/off switch covering every
+  // listing the user watchlists, checked by the crawler after each detected
+  // price drop (see src/lib/priceDropAlerts.ts) to decide who to email.
+  emailOnPriceDropAlerts: boolean("email_on_price_drop_alerts").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
