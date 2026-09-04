@@ -3,11 +3,15 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { users } from "@/db/schema";
+import { authTokens, users } from "@/db/schema";
 import { hashPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createAuthToken } from "@/lib/auth/tokens";
+import { sendEmail } from "@/lib/email/send";
+import { verifyEmailHtml } from "@/lib/email/templates";
 
 export type RegisterState = { error?: string };
+
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function registerAction(_prevState: RegisterState, formData: FormData): Promise<RegisterState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -22,6 +26,19 @@ export async function registerAction(_prevState: RegisterState, formData: FormDa
   const passwordHash = await hashPassword(password);
   const [user] = await db.insert(users).values({ email, passwordHash }).returning({ id: users.id });
 
-  await createSession(user.id);
-  redirect("/");
+  try {
+    const token = await createAuthToken(user.id, "email_verification", EMAIL_VERIFICATION_TTL_MS);
+    const link = `${process.env.APP_URL}/verify-email?token=${token}`;
+    await sendEmail({ to: email, subject: "Verify your CarSpy NZ email", html: verifyEmailHtml(link) });
+  } catch (err) {
+    console.error("Failed to send verification email —", err);
+    // Roll back so the address is free to retry registration with, rather
+    // than being stuck unverified with no way to get another email out.
+    // Token row first — it references the user row via a FK.
+    await db.delete(authTokens).where(eq(authTokens.userId, user.id));
+    await db.delete(users).where(eq(users.id, user.id));
+    return { error: "Couldn't send verification email — please try again" };
+  }
+
+  redirect("/register/check-email");
 }

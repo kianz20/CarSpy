@@ -25,7 +25,7 @@ export function Footer() {
           Kian Jazayeri
         </a>{" "}
         ·{" "}
-        <a href="https://github.com/kianz20/CarValue" target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline">
+        <a href="https://github.com/kianz20/CarSpy" target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline">
           Source on GitHub
         </a>{" "}
         · MIT Licensed · Estimates only, not professional valuations or financial advice — actual costs will vary.

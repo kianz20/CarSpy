@@ -8,7 +8,7 @@ import robotsParser from "robots-parser";
  * any of its pages are fetched.
  */
 
-export const CRAWLER_USER_AGENT = "CarValueBot/1.0 (+https://github.com/; personal project, contact via GitHub)";
+export const CRAWLER_USER_AGENT = "CarSpyBot/1.0 (+https://github.com/; personal project, contact via GitHub)";
 
 export type RobotsCheckResult = {
   allowed: boolean;

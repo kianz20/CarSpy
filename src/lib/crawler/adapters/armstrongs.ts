@@ -1,6 +1,6 @@
 import { CRAWLER_USER_AGENT } from "../robots";
 import type { NormalizedListing } from "../types";
-import { normalizeBodyType, normalizePowertrain, normalizeTransmission } from "../normalize";
+import { inferMotorcycleFromEngineCc, normalizeBodyType, normalizePowertrain, normalizeTransmission } from "../normalize";
 
 /**
  * Bespoke scraper for Armstrong's Motor Group (armstrongs.co.nz) — see
@@ -89,7 +89,7 @@ function parseRecord(record: ArmstrongsRecord, origin: string): NormalizedListin
     variant: record["@LISTING_VARIANT"] || undefined,
     engine: record["@LISTING_ENGINE"] || undefined,
     transmission: normalizeTransmission(record["@LISTING_TRANSMISSION"]),
-    bodyType: normalizeBodyType(record["@LISTING_BODY_TYPE"]),
+    bodyType: normalizeBodyType(record["@LISTING_BODY_TYPE"]) ?? inferMotorcycleFromEngineCc(record["@LISTING_ENGINE"] || undefined),
     powertrain: normalizePowertrain(record["@LISTING_FUEL_TYPE"]),
     mileageKm,
     price,

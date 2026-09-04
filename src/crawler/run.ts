@@ -69,7 +69,17 @@ async function crawlOneDealer(dealer: typeof dealers.$inferSelect): Promise<Pric
   console.log(`[crawl] ${dealer.name} (${dealer.platform}) — ${robotsCheck.reason}`);
   try {
     const existingExternalIds = await getExistingExternalIds(dealer.id);
-    const scraped = await adapter(dealer.url, existingExternalIds);
+    let scraped: NormalizedListing[] = [];
+    try {
+      scraped = await adapter(dealer.url, existingExternalIds);
+    } catch (err) {
+      // A dealer whose site is unreachable (dead domain, off-site redirect,
+      // broken markup) saw nothing this run, same as one that returned an
+      // empty page — falling through to ingestDealerListings with `scraped`
+      // still [] lets its existing listings age through the normal
+      // unconfirmed/delisted counter instead of being frozen "active" forever.
+      console.error(`[error] ${dealer.name} —`, err);
+    }
     const summary = await ingestDealerListings(dealer.id, scraped);
     console.log(
       `[done] ${dealer.name} — scraped ${scraped.length}, created ${summary.created}, updated ${summary.updated}, ` +

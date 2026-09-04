@@ -33,6 +33,8 @@ import { parseListParam } from "@/lib/listParams";
 import { getEffectiveDefaults } from "@/lib/settings";
 import { logSearch } from "@/lib/searchAnalytics";
 import { newRequestId, timed } from "@/lib/logging/timing";
+import { getExistingSubscription } from "@/lib/search/subscriptions";
+import { SubscribeSearchButton } from "@/components/subscribe-search-button";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -127,20 +129,24 @@ export default async function Home({
       getInventoryStats(),
     ]),
   );
-  // Kicked off here rather than awaited immediately — none of these three
-  // depend on anything from the hasSearched block below (watchlistedIds only
-  // needs currentUser, already resolved above; recentPriceDrops only needs
-  // the hasSearched flag from the URL; vehicleSpecs is its own cached
-  // lookup), so letting them run concurrently with that block's DB round
-  // trip instead of strictly before or after it removes a full serial
-  // network round-trip from every page load (see the timing investigation —
-  // each round trip to this Neon compute costs ~300-500ms minimum even
-  // warm, and these were previously back-to-back awaits).
+  // Kicked off here rather than awaited immediately — none of these four
+  // depend on anything from the hasSearched block below (watchlistedIds and
+  // existingSubscription only need currentUser, already resolved above;
+  // recentPriceDrops only needs the hasSearched flag from the URL;
+  // vehicleSpecs is its own cached lookup), so letting them run concurrently
+  // with that block's DB round trip instead of strictly before or after it
+  // removes a full serial network round-trip from every page load (see the
+  // timing investigation — each round trip to the DB costs a real minimum
+  // even warm, and these were previously back-to-back awaits).
   const watchlistedIdsPromise = currentUser
     ? timed(reqId, "getWatchlistedListingIds", () => getWatchlistedListingIds(currentUser.id))
     : Promise.resolve(undefined);
   const recentPriceDropsPromise = hasSearched ? Promise.resolve([]) : timed(reqId, "getRecentPriceDrops", () => getRecentPriceDrops(6));
   const vehicleSpecsPromise = timed(reqId, "loadVehicleSpecs", () => loadVehicleSpecs());
+  const existingSubscriptionPromise =
+    currentUser && hasSearched
+      ? timed(reqId, "getExistingSubscription", () => getExistingSubscription(currentUser.id, filters))
+      : Promise.resolve(undefined);
 
   // Falls back to the user's saved settings only when the URL doesn't
   // already say — a submitted search always carries explicit financeEnabled/
@@ -200,15 +206,16 @@ export default async function Home({
     await logSearch(filters, sort, totalCount, currentUser);
   }
 
-  const [firstSeenPrices, vehicleSpecs, watchlistedIds, recentPriceDrops] = await timed(
+  const [firstSeenPrices, vehicleSpecs, watchlistedIds, recentPriceDrops, existingSubscription] = await timed(
     reqId,
-    "firstSeenPrices+watchlist+priceDrops+specs",
+    "firstSeenPrices+watchlist+priceDrops+specs+subscription",
     () =>
       Promise.all([
         getFirstSeenPrices(listingsData.map((l) => l.id)),
         vehicleSpecsPromise,
         watchlistedIdsPromise,
         recentPriceDropsPromise,
+        existingSubscriptionPromise,
       ]),
   );
 
@@ -292,12 +299,17 @@ export default async function Home({
             </div>
           </aside>
 
-          {listingsData.length > 0 && (
+          {hasSearched && (
             <div className="relative mb-4 flex flex-wrap items-center justify-between gap-2 lg:col-start-2 lg:row-start-1 lg:mb-6 lg:top-[10px]">
               <p className="text-sm text-muted">
                 <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
                 matching listing{totalCount === 1 ? "" : "s"}
               </p>
+              <SubscribeSearchButton
+                filters={filters}
+                isLoggedIn={currentUser !== undefined}
+                existingSubscription={existingSubscription}
+              />
               <SortSelect current={sort} />
             </div>
           )}

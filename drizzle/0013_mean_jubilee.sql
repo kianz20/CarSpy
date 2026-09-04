@@ -1,1 +1,0 @@
-CREATE INDEX "listing_price_history_listing_observed_idx" ON "listing_price_history" USING btree ("listing_id","observed_at");

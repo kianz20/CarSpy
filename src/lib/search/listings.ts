@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings, dealers, vehicleModelDescriptions, listingPriceHistory } from "@/db/schema";
 import { BRACKET_DEFS, type MileageBracketStat } from "./mileageStats";
@@ -218,6 +218,38 @@ export async function searchListings(
   );
 
   return { rows: ranked, totalCount, page: clampedPage, pageCount };
+}
+
+export type NewMatch = {
+  id: number;
+  make: string;
+  model: string;
+  year: number | null;
+  price: number;
+};
+
+/** Listings matching a saved search's filters that first appeared after
+ * `since` — what sendSearchAlerts.ts emails a subscriber about. Capped at `limit`, with `hasMore` so the email can say
+ * "+N more" rather than silently truncating a big match set. */
+export async function getNewMatchesForSubscription(
+  filters: ListingSearchFilters,
+  since: Date,
+  limit: number = 20,
+): Promise<{ matches: NewMatch[]; hasMore: boolean }> {
+  const conditions = await buildConditions(filters);
+  const rows = await db
+    .select({ id: listings.id, make: listings.make, model: listings.model, year: listings.year, price: listings.price })
+    .from(listings)
+    .innerJoin(dealers, eq(listings.dealerId, dealers.id))
+    .where(and(conditions, gt(listings.firstSeenAt, since)))
+    .orderBy(desc(listings.firstSeenAt))
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  return {
+    matches: rows.slice(0, limit).map((r) => ({ id: r.id, make: r.make, model: r.model, year: r.year, price: parseFloat(r.price) })),
+    hasMore,
+  };
 }
 
 /**

@@ -166,6 +166,22 @@ export function normalizeBodyType(raw: string | undefined): string | undefined {
 }
 
 /**
+ * Fallback for listings whose body type couldn't be resolved from any raw
+ * text (e.g. a dealer's "Body" field is simply blank for motorbike stock,
+ * as seen on a real Motorcentral listing for a 49cc moped). NZ's smallest
+ * cars (kei cars) start around 660cc, while mopeds/scooters/motorbikes are
+ * almost always under 250cc, so a small parsed cc figure is itself a
+ * reliable signal even without a body-type string to match against.
+ */
+export function inferMotorcycleFromEngineCc(engine: string | undefined): "motorcycle" | undefined {
+  if (!engine) return undefined;
+  const match = engine.match(/(\d+)\s*cc/i);
+  if (!match) return undefined;
+  const cc = parseInt(match[1], 10);
+  return cc > 0 && cc < 250 ? "motorcycle" : undefined;
+}
+
+/**
  * Classifies a free-text vehicle specs line (e.g. "80,678km, Automatic,
  * Hybrid, 1200cc" or, on a different dealer's template, "120,466km Automatic
  * Petrol 1986cc" with no commas at all) into fields by pattern rather than

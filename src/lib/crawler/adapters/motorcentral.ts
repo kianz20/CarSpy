@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { CRAWLER_USER_AGENT } from "../robots";
 import type { NormalizedListing } from "../types";
-import { classifySpecLine, normalizeBodyType, parsePrice, parseVehicleTitle } from "../normalize";
+import { classifySpecLine, inferMotorcycleFromEngineCc, normalizeBodyType, parsePrice, parseVehicleTitle } from "../normalize";
 import { mapWithConcurrency } from "../concurrency";
 
 /**
@@ -34,9 +34,25 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Dealers occasionally rebrand and let their old vanity domain 301/302 to an
+// entirely different site (see Hutt City Autoworld -> Autoworld). fetch()
+// follows redirects transparently, so without this check we'd silently parse
+// whatever page the new domain's homepage happens to be — and if that
+// homepage happens to feature one of the dealer's old listings in a "featured"
+// carousel, that one listing gets falsely reconfirmed as active forever while
+// the rest of the dealer's real inventory correctly drains to delisted.
+function assertNotRedirectedOffSite(res: Response, requestedUrl: string) {
+  const requestedHost = new URL(requestedUrl).hostname.replace(/^www\./, "");
+  const finalHost = new URL(res.url).hostname.replace(/^www\./, "");
+  if (finalHost !== requestedHost) {
+    throw new Error(`Redirected off-site: ${requestedUrl} -> ${res.url}`);
+  }
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const res = await fetch(url, { headers: { "User-Agent": CRAWLER_USER_AGENT } });
   if (!res.ok) throw new Error(`Fetch failed for ${url}: HTTP ${res.status}`);
+  assertNotRedirectedOffSite(res, url);
   return res.text();
 }
 
@@ -240,7 +256,7 @@ export async function crawlMotorcentralDealer(
       variant,
       engine: card.engine,
       transmission: card.transmission,
-      bodyType: detailData.bodyType,
+      bodyType: detailData.bodyType ?? inferMotorcycleFromEngineCc(card.engine),
       powertrain: card.powertrain,
       mileageKm: card.mileageKm,
       price: card.price,

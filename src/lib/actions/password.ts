@@ -5,6 +5,8 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { sendEmail } from "@/lib/email/send";
+import { passwordChangedHtml } from "@/lib/email/templates";
 
 export type ChangePasswordState = { error?: string; success?: boolean };
 
@@ -29,6 +31,19 @@ export async function changePasswordAction(
 
   const passwordHash = await hashPassword(newPassword);
   await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+
+  try {
+    const link = `${process.env.APP_URL}/forgot-password`;
+    await sendEmail({
+      to: user.email,
+      subject: "Your CarSpy NZ password was changed",
+      html: passwordChangedHtml(link),
+    });
+  } catch (err) {
+    // Notification only — the password change itself already succeeded,
+    // so a failed send shouldn't roll it back or block the user.
+    console.error("Failed to send password-changed notification —", err);
+  }
 
   return { success: true };
 }
