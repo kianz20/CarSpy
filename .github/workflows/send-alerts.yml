@@ -1,0 +1,34 @@
+name: Send search alert emails
+
+on:
+  schedule:
+    # Runs daily at 21:00 UTC (09:00 NZST / 08:00 NZDT) — well after the 3am
+    # NZ crawl finishes, so subscribers see that morning's new listings
+    # without getting emailed at 3am. Same DST drift crawl.yml already
+    # accepts (GitHub Actions cron is UTC-only); adjust here if you want a
+    # different local time.
+    - cron: "0 21 * * *"
+  # Lets you trigger a send on demand from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  send-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Send alerts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: npm run alerts:send

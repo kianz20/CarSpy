@@ -216,3 +216,33 @@ export const searchLog = pgTable("search_log", {
   resultCount: integer("result_count").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// A user's standing subscription to a search — "email me when new listings
+// match these filters". Only the actual match criteria are stored, not sort
+// or the finance/ownership display params, since those don't affect which
+// listings match. `filtersHash` is a canonical JSON encoding of `filters`
+// (see canonicalizeFilters in lib/search/subscriptionFilters.ts), letting a lookup
+// find "does this user already have this exact search saved" without a deep
+// JSONB comparison. `lastNotifiedAt` is the cursor sendSearchAlerts.ts reads
+// forward from (defaulting to createdAt) — it advances on every run for a
+// given subscription regardless of whether that run found new matches, so a
+// quiet search doesn't keep re-scanning an ever-growing window from scratch.
+export const searchSubscriptions = pgTable(
+  "search_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    filters: jsonb("filters").notNull(),
+    filtersHash: text("filters_hash").notNull(),
+    frequency: text("frequency").notNull(), // 'daily' | 'weekly'
+    unsubscribeToken: text("unsubscribe_token").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at"),
+  },
+  (table) => [
+    uniqueIndex("search_subscriptions_user_filters_idx").on(table.userId, table.filtersHash),
+    uniqueIndex("search_subscriptions_unsubscribe_token_idx").on(table.unsubscribeToken),
+  ],
+);

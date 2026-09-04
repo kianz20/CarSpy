@@ -29,6 +29,8 @@ import { getWatchlistedListingIds } from "@/lib/watchlist";
 import { parseListParam } from "@/lib/listParams";
 import { getEffectiveDefaults } from "@/lib/settings";
 import { logSearch } from "@/lib/searchAnalytics";
+import { getExistingSubscription } from "@/lib/search/subscriptions";
+import { SubscribeSearchButton } from "@/components/subscribe-search-button";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -121,6 +123,8 @@ export default async function Home({
     getInventoryStats(),
   ]);
   const watchlistedIds = currentUser ? await getWatchlistedListingIds(currentUser.id) : undefined;
+  const existingSubscription =
+    currentUser && hasSearched ? await getExistingSubscription(currentUser.id, filters) : undefined;
 
   // Falls back to the user's saved settings only when the URL doesn't
   // already say — a submitted search always carries explicit financeEnabled/
@@ -263,12 +267,17 @@ export default async function Home({
             </div>
           </aside>
 
-          {listingsData.length > 0 && (
+          {hasSearched && (
             <div className="relative mb-4 flex flex-wrap items-center justify-between gap-2 lg:col-start-2 lg:row-start-1 lg:mb-6 lg:top-[10px]">
               <p className="text-sm text-muted">
                 <span className="font-semibold text-foreground">{totalCount.toLocaleString()}</span>{" "}
                 matching listing{totalCount === 1 ? "" : "s"}
               </p>
+              <SubscribeSearchButton
+                filters={filters}
+                isLoggedIn={currentUser !== undefined}
+                existingSubscription={existingSubscription}
+              />
               <SortSelect current={sort} />
             </div>
           )}

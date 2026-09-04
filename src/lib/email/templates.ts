@@ -1,3 +1,6 @@
+import { formatCurrency } from "@/lib/format";
+import type { NewMatch } from "@/lib/search/listings";
+
 // Mirrors the site's own look (see globals.css): the purple→cyan accent
 // gradient, card surface with a soft border/shadow, and the page's off-white
 // background — inlined since email clients don't load external stylesheets.
@@ -76,6 +79,39 @@ export function passwordChangedHtml(forgotPasswordLink: string): string {
       ${paragraph("This is a confirmation that your CarSpy NZ account password was just changed.")}
       ${paragraph("If this was you, no action is needed. If it wasn't, reset your password immediately:")}
       <p style="margin: 24px 0;">${button("Reset password", forgotPasswordLink)}</p>
+    `,
+  );
+}
+
+function matchRow(match: NewMatch, viewLink: string): string {
+  return `
+    <a href="${viewLink}" style="display: block; text-decoration: none; padding: 10px 0; border-bottom: 1px solid ${BORDER};">
+      <span style="font-size: 13px; font-weight: 600; color: ${FOREGROUND};">${match.year ?? ""} ${match.make} ${match.model}</span>
+      <span style="display: block; font-size: 13px; font-weight: 700; color: ${FOREGROUND};">${formatCurrency(match.price)}</span>
+    </a>
+  `;
+}
+
+export function searchAlertHtml(
+  matches: NewMatch[],
+  hasMore: boolean,
+  searchLabel: string,
+  viewAllLink: string,
+  listingLink: (id: number) => string,
+  unsubscribeLink: string,
+): string {
+  return wrapper(
+    "New matches for your search",
+    `
+      ${paragraph(`${matches.length} new listing${matches.length === 1 ? "" : "s"} matching <strong>${searchLabel}</strong>:`)}
+      <div style="margin: 16px 0;">
+        ${matches.map((m) => matchRow(m, listingLink(m.id))).join("")}
+      </div>
+      <p style="margin: 24px 0;">${button(hasMore ? "View all results" : "View search", viewAllLink)}</p>
+      <p style="font-size: 12px; line-height: 1.5; color: ${MUTED}; margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BORDER};">
+        You're getting this because you subscribed to alerts for this search.
+        <a href="${unsubscribeLink}" style="color: ${MUTED}; text-decoration: underline;">Stop these alerts</a>.
+      </p>
     `,
   );
 }

@@ -3,9 +3,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { SettingsForm } from "@/components/settings-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SearchAlertsList } from "@/components/search-alerts-list";
+import { getSubscriptionsForUser } from "@/lib/search/subscriptions";
 
 export default async function SettingsPage() {
   const [defaults, user] = await Promise.all([getEffectiveDefaults(), getCurrentUser()]);
+  const subscriptions = user ? await getSubscriptionsForUser(user.id) : [];
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
@@ -34,6 +37,15 @@ export default async function SettingsPage() {
           <h2 className="mb-3 text-lg font-bold tracking-tight">Change password</h2>
           <div className="card p-6">
             <ChangePasswordForm />
+          </div>
+        </div>
+      )}
+
+      {user && (
+        <div>
+          <h2 className="mb-3 text-lg font-bold tracking-tight">Search alerts</h2>
+          <div className="card p-6">
+            <SearchAlertsList subscriptions={subscriptions} />
           </div>
         </div>
       )}
