@@ -391,6 +391,68 @@ export async function getRecentPriceDrops(limit: number): Promise<RecentPriceDro
   }));
 }
 
+/** Same teaser data as getRecentPriceDrops, but ranked by the *percentage*
+ * drop since each listing's first-seen price rather than by how recently it
+ * last changed. Percentage rather than raw dollar amount — raw dollar just
+ * tracks vehicle price (a 6% cut on a $110k truck beats a 20% cut on a $15k
+ * hatchback in dollar terms despite being the worse deal), and this tab is
+ * meant to surface genuine bargains rather than reward expensive listings.
+ * The badge still shows the dollar figure (see PriceDrops), only the
+ * ranking/dedup is percentage-based. Still active/confirmed listings only,
+ * and still deduped to one per make/model. */
+export async function getBiggestPriceDrops(limit: number): Promise<RecentPriceDrop[]> {
+  const rows = await db.execute<{
+    id: number;
+    make: string;
+    model: string;
+    year: number | null;
+    image_url: string | null;
+    current_price: string;
+    first_price: string;
+    first_seen_at: Date;
+  }>(sql`
+    with first_prices as (
+      select distinct on (listing_id) listing_id, price as first_price, observed_at as first_seen_at
+      from ${listingPriceHistory}
+      order by listing_id, observed_at asc
+    ),
+    drops as (
+      select
+        l.id, l.make, l.model, l.year, l.image_url,
+        l.price as current_price,
+        fp.first_price,
+        fp.first_seen_at,
+        (fp.first_price::numeric - l.price::numeric) / fp.first_price::numeric as drop_pct
+      from ${listings} l
+      join first_prices fp on fp.listing_id = l.id
+      where l.status = 'active'
+        and l.price::numeric > 0
+        and fp.first_price::numeric > l.price::numeric
+    ),
+    deduped as (
+      select *,
+        row_number() over (partition by make, model order by drop_pct desc) as model_rn
+      from drops
+    )
+    select id, make, model, year, image_url, current_price, first_price, first_seen_at
+    from deduped
+    where model_rn = 1
+    order by drop_pct desc
+    limit ${limit}
+  `);
+
+  return rows.map((r) => ({
+    id: r.id,
+    make: r.make,
+    model: r.model,
+    year: r.year,
+    imageUrl: r.image_url,
+    price: parseFloat(r.current_price),
+    previousPrice: parseFloat(r.first_price),
+    droppedAt: r.first_seen_at,
+  }));
+}
+
 export type SimilarListingStats = {
   count: number;
   avgPrice: number;

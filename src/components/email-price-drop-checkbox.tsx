@@ -5,7 +5,11 @@ import { setEmailOnPriceDropAlertsAction } from "@/lib/actions/watchlist";
 
 /** One global switch for the whole watchlist (see schema.ts's
  * userSettings.emailOnPriceDropAlerts) — not a per-listing toggle. */
-export function EmailPriceDropCheckbox({ initialEnabled }: { initialEnabled: boolean }) {
+export function EmailPriceDropCheckbox({
+  initialEnabled,
+}: {
+  initialEnabled: boolean;
+}) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [, startTransition] = useTransition();
 
@@ -27,7 +31,7 @@ export function EmailPriceDropCheckbox({ initialEnabled }: { initialEnabled: boo
         onChange={(e) => handleChange(e.target.checked)}
         className="h-4 w-4 rounded border-border accent-accent"
       />
-      Email me when any watchlisted car drops in price
+      Email me when a car I watchlisted drops in price
     </label>
   );
 }

@@ -6,6 +6,7 @@ import {
   getDistinctRegions,
   getFirstSeenPrices,
   getRecentPriceDrops,
+  getBiggestPriceDrops,
   getInventoryStats,
   type ListingSearchFilters,
   type ListingSort,
@@ -20,7 +21,7 @@ import {
   type InsuranceCoverType,
 } from "@/lib/ownership";
 import { SearchForm } from "@/components/search-form";
-import { RecentPriceDrops } from "@/components/recent-price-drops";
+import { PriceDrops } from "@/components/price-drops";
 import { PopularSearchChips } from "@/components/popular-search-chips";
 import { MileageStatsBar } from "@/components/mileage-stats-bar";
 import { SortSelect } from "@/components/sort-select";
@@ -142,6 +143,7 @@ export default async function Home({
     ? timed(reqId, "getWatchlistedListingIds", () => getWatchlistedListingIds(currentUser.id))
     : Promise.resolve(undefined);
   const recentPriceDropsPromise = hasSearched ? Promise.resolve([]) : timed(reqId, "getRecentPriceDrops", () => getRecentPriceDrops(6));
+  const biggestPriceDropsPromise = hasSearched ? Promise.resolve([]) : timed(reqId, "getBiggestPriceDrops", () => getBiggestPriceDrops(6));
   const vehicleSpecsPromise = timed(reqId, "loadVehicleSpecs", () => loadVehicleSpecs());
   const existingSubscriptionPromise =
     currentUser && hasSearched
@@ -206,7 +208,7 @@ export default async function Home({
     await logSearch(filters, sort, totalCount, currentUser);
   }
 
-  const [firstSeenPrices, vehicleSpecs, watchlistedIds, recentPriceDrops, existingSubscription] = await timed(
+  const [firstSeenPrices, vehicleSpecs, watchlistedIds, recentPriceDrops, biggestPriceDrops, existingSubscription] = await timed(
     reqId,
     "firstSeenPrices+watchlist+priceDrops+specs+subscription",
     () =>
@@ -215,6 +217,7 @@ export default async function Home({
         vehicleSpecsPromise,
         watchlistedIdsPromise,
         recentPriceDropsPromise,
+        biggestPriceDropsPromise,
         existingSubscriptionPromise,
       ]),
   );
@@ -247,12 +250,12 @@ export default async function Home({
         // just an empty form on a first visit — same max-w-4xl form width
         // either way, just widening the overall container to make room.
         <div
-          className={`mx-auto w-full ${recentPriceDrops.length > 0 ? "max-w-7xl lg:grid lg:grid-cols-[240px_1fr_280px] lg:items-start lg:gap-8" : "max-w-6xl lg:grid lg:grid-cols-[240px_1fr] lg:items-start lg:gap-8"}`}
+          className={`mx-auto w-full ${recentPriceDrops.length > 0 || biggestPriceDrops.length > 0 ? "max-w-7xl lg:grid lg:grid-cols-[240px_1fr_280px] lg:items-start lg:gap-8" : "max-w-6xl lg:grid lg:grid-cols-[240px_1fr] lg:items-start lg:gap-8"}`}
         >
           <div className="order-2 mt-6 lg:order-1 lg:mt-0">
             <PopularSearchChips financeEnabled={defaults.financeEnabled} />
           </div>
-          <div className="card order-1 p-6 sm:p-8 lg:order-2">
+          <div className="card order-1 mt-6 p-6 sm:p-8 lg:order-2 lg:mt-0">
             <SearchForm
               bodyTypes={bodyTypes}
               powertrains={powertrains}
@@ -262,9 +265,9 @@ export default async function Home({
               defaults={defaults}
             />
           </div>
-          {recentPriceDrops.length > 0 && (
+          {(recentPriceDrops.length > 0 || biggestPriceDrops.length > 0) && (
             <div className="order-3 mt-6 lg:mt-0">
-              <RecentPriceDrops drops={recentPriceDrops} />
+              <PriceDrops recent={recentPriceDrops} biggest={biggestPriceDrops} />
             </div>
           )}
         </div>
