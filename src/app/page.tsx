@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   searchListings,
   getMileageBracketStats,
@@ -55,6 +56,21 @@ function getBackHref(params: SearchParams): string {
   if (backParam) return decodeURIComponent(backParam);
   // Otherwise go to the main search page
   return "/";
+}
+
+// Any query-string search here is a thin/duplicate variant of the same
+// underlying inventory (there's no dedicated landing page for it yet — see
+// the SEO plan's phase 2), so it's kept crawlable but out of the index;
+// only the bare "/" is offered to Google as an indexable URL. `follow: true`
+// still lets link equity flow through to whatever it links to.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const hasFilters = Object.keys(params).length > 0;
+  return hasFilters ? { robots: { index: false, follow: true } } : {};
 }
 
 export default async function Home({

@@ -19,13 +19,39 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Falls back to localhost in dev (matches APP_URL's own default in .env.example)
+// so relative OG/canonical URLs still resolve to *something* valid locally.
+const siteUrl = process.env.APP_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "CarSpy",
-  description: "Find the best used-car deals across NZ dealer inventory",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Used Cars for Sale NZ | CarSpy",
+    template: "%s | CarSpy",
+  },
+  description:
+    "Search NZ dealer inventory and compare true ownership cost, not just price — finance, fuel, servicing, insurance and repairs included, free to search.",
   appleWebApp: {
     title: "CarSpy",
     statusBarStyle: "black-translucent",
   },
+};
+
+// Organization + WebSite JSON-LD — emitted once, site-wide, so every page
+// (not just ones that set their own structured data) identifies the same
+// publisher/site to Google rather than looking like unrelated pages.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "CarSpy",
+  url: siteUrl,
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "CarSpy",
+  url: siteUrl,
 };
 
 export const viewport: Viewport = {
@@ -80,6 +106,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
+        {/* A plain <script type="application/ld+json"> is fine here (unlike
+            the executable script above) — it's an inert data island, never
+            executed, so none of next/script's hydration-timing rules apply. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       </head>
       <body className="min-h-full flex flex-col">
         <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-md">

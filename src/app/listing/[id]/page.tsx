@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,6 +29,7 @@ import { toListParam } from "@/lib/listParams";
 import { DistributionBar } from "@/components/comparison-distribution";
 import { SmoothAccordion } from "@/components/smooth-accordion";
 import { ListingAccordions } from "@/components/listing-accordions";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -40,6 +43,44 @@ function toNumber(value: string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// Wrapped in React's cache() so generateMetadata and the page component —
+// which both need the same row — share one DB round-trip per request
+// instead of two; Next dedupes cache()-wrapped calls per-request the same
+// way it dedupes fetch(), but this is a Drizzle query, not fetch().
+const getCachedListingById = cache(getListingById);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const listingId = Number(id);
+  if (!Number.isInteger(listingId)) return {};
+
+  const row = await getCachedListingById(listingId);
+  if (!row) return {};
+
+  const { listings: listing, dealers: dealer } = row;
+  const price = parseFloat(listing.price);
+  const titleName = `${listing.year ?? ""} ${listing.make} ${listing.model}${listing.variant ? ` ${listing.variant}` : ""}`.trim();
+  const title = dealer.region ? `${titleName} for Sale in ${dealer.region}` : `${titleName} for Sale`;
+
+  const descriptionParts = [
+    formatCurrency(price),
+    listing.mileageKm != null ? `${formatNumber(listing.mileageKm)} km` : undefined,
+    listing.powertrain,
+    listing.transmission,
+  ].filter(Boolean);
+  const description = `${titleName} — ${descriptionParts.join(", ")}. For sale${dealer.region ? ` in ${dealer.region}` : ""} via ${dealer.name} on CarSpy.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/listing/${listing.id}` },
+    // A delisted listing is kept viewable (see the status banner below) but
+    // shouldn't be offered to Google as a search result once it's gone —
+    // unlike "unconfirmed", which is just a missed crawl and stays indexed.
+    ...(listing.status === "delisted" ? { robots: { index: false, follow: true } } : {}),
+  };
+}
+
 export default async function ListingDetailPage({
   params,
   searchParams,
@@ -51,7 +92,7 @@ export default async function ListingDetailPage({
   const listingId = Number(id);
   if (!Number.isInteger(listingId)) notFound();
 
-  const row = await getListingById(listingId);
+  const row = await getCachedListingById(listingId);
   if (!row) notFound();
 
   const { listings: listing, dealers: dealer } = row;
@@ -154,9 +195,45 @@ export default async function ListingDetailPage({
   }
   const similarListingsHref = `/?${similarListingsParams.toString()}`;
 
+  // Omitted for delisted listings (kept viewable, but noindexed — see
+  // generateMetadata above) so a page Google shouldn't index doesn't also
+  // carry a stale "in stock" structured-data claim.
+  const vehicleJsonLd =
+    listing.status !== "delisted"
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Vehicle",
+          name: `${listing.year ?? ""} ${listing.make} ${listing.model}`.trim(),
+          brand: listing.make,
+          model: listing.model,
+          ...(listing.year != null ? { vehicleModelDate: String(listing.year) } : {}),
+          ...(listing.variant ? { vehicleConfiguration: listing.variant } : {}),
+          ...(listing.mileageKm != null
+            ? { mileageFromOdometer: { "@type": "QuantitativeValue", value: listing.mileageKm, unitCode: "KMT" } }
+            : {}),
+          ...(listing.transmission ? { vehicleTransmission: listing.transmission } : {}),
+          ...(listing.powertrain ? { fuelType: listing.powertrain } : {}),
+          offers: {
+            "@type": "Offer",
+            price,
+            priceCurrency: "NZD",
+            availability: "https://schema.org/InStock",
+            itemCondition: "https://schema.org/UsedCondition",
+            url: `${process.env.APP_URL ?? "http://localhost:3000"}/listing/${listing.id}`,
+            seller: { "@type": "AutoDealer", name: dealer.name },
+          },
+        }
+      : undefined;
+
   return (
     <div className="mx-auto w-full max-w-[1700px] flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <Link href={backHref} className="mb-6 flex w-fit items-center gap-1 text-sm text-muted hover:text-accent lg:mb-8">
+      {vehicleJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(vehicleJsonLd) }} />
+      )}
+      <Breadcrumbs
+        items={[{ label: "Home", href: "/" }, { label: `${listing.make} ${listing.model}` }]}
+      />
+      <Link href={backHref} className="mb-6 mt-2 flex w-fit items-center gap-1 text-sm text-muted hover:text-accent lg:mb-8">
         <span aria-hidden="true">←</span> Back to search
       </Link>
 
