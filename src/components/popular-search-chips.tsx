@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 type PopularSearch = {
@@ -19,13 +22,34 @@ const POPULAR_SEARCHES: readonly PopularSearch[] = [
   { label: "Diesel Utes", params: { powertrain: "diesel", bodyType: "ute", minYear: "2000" } },
 ];
 
-/** Sidebar teaser for the pre-search home page, styled to match
- * RecentPriceDrops — a fixed-width card of quick links sitting opposite it. */
+/** Sidebar teaser for the pre-search home page, styled to match PriceDrops —
+ * a fixed-width card of quick links sitting opposite it. Collapsed behind a
+ * chevron toggle below the `lg` breakpoint only — on mobile this card sits
+ * between the popular-search-chips-heavy form and the price-drops panel, so
+ * collapsing it by default keeps the page from opening with a wall of chip
+ * links before the actual search form; at `lg`+ there's room for it to just
+ * stay open like before. */
 export function PopularSearchChips({ financeEnabled }: { financeEnabled: boolean }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="card p-4">
-      <h2 className="mb-3 text-sm font-semibold">Popular searches</h2>
-      <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
+      >
+        <h2 className="text-sm font-semibold">Popular searches</h2>
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          className={`h-4 w-4 shrink-0 text-muted transition-transform lg:hidden ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <div className={`mt-3 flex-col gap-1 lg:flex ${open ? "flex" : "hidden"}`}>
         {POPULAR_SEARCHES.map((search) => {
           // hasSearched (page.tsx) only checks that financeEnabled is present
           // in the URL at all, not its value — but it still has to be *some*
