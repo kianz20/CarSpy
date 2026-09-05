@@ -92,6 +92,24 @@ function matchRow(match: NewMatch, viewLink: string): string {
   `;
 }
 
+export function feedbackAlertHtml(message: string, fromEmail: string | undefined, pageUrl: string | undefined): string {
+  // whitespace-pre-wrap rather than escaping newlines into <br> tags — feedback
+  // is free text a visitor typed, not markup, so it shouldn't be interpreted
+  // as HTML at all (this and the em/pageUrl below still get HTML-escaped,
+  // same reasoning as escapeHtml elsewhere — this is user-submitted content
+  // going into an email admins open, not something to trust as-is).
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return wrapper(
+    "New feedback submitted",
+    `
+      <p style="font-size: 14px; line-height: 1.6; color: ${FOREGROUND}; margin: 0 0 16px; white-space: pre-wrap;">${escape(message)}</p>
+      ${footnote(
+        `From: ${fromEmail ? escape(fromEmail) : "anonymous"}${pageUrl ? ` · Page: ${escape(pageUrl)}` : ""}`,
+      )}
+    `,
+  );
+}
+
 export function searchAlertHtml(
   matches: NewMatch[],
   hasMore: boolean,

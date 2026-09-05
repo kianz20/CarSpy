@@ -7,3 +7,9 @@ const ADMIN_EMAILS = new Set(["kianja02@gmail.com"]);
 export function isAdminEmail(email: string): boolean {
   return ADMIN_EMAILS.has(email.trim().toLowerCase());
 }
+
+/** Where to send admin-facing notifications (e.g. new feedback alerts) —
+ * everyone in the allowlist above, not just whoever's currently logged in. */
+export function getAdminEmails(): string[] {
+  return [...ADMIN_EMAILS];
+}
